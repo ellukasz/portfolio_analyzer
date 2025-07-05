@@ -1,0 +1,9 @@
+[package]
+name = "shared_contracts"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rust_decimal = "1.37.2"
+chrono = "0.4.41" 
+thiserror = "2.0.12"

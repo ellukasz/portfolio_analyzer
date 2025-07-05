@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "shared_contracts",
+    "trade_loaders/mbank_emakler_csv",
+]
+
+
