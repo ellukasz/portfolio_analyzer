@@ -11,8 +11,11 @@ where
         .map_err(de::Error::custom)
 }
 
+const EXPECTED_CSV_HEADER_FIELDS: &[&str] = &["Stan", "Papier", "Giełda", "K/S", "Liczba zlecona", "Liczba zrealizowana", "Limit ceny", "Walute", "Limit aktywacji", "Data zlecenia"];
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct Csv {
+
     pub stan: String,
     pub papier: String,
     pub gielda: String,

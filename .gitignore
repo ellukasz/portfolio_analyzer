@@ -17,10 +17,6 @@ Cargo.lock
 .DS_Store
 # Windows
 Thumbs.db
-# Linux
-*~
-# Byebug
-.byebug_history
 # Rust Analyzer
 .rust-analyzer.json
 .rust-analyzer.jsonc
@@ -28,41 +24,3 @@ Thumbs.db
 /coverage/
 *.profraw
 *.profdata
-# Misc
-*.log
-*.tmp
-*.bak
-*.old
-*.orig
-*.rej
-*.sublime-workspace
-*.sublime-project
-*.iml
-*.class
-*.pyc
-*.pyo
-*.pyd
-*.db
-*.sqlite
-*.swo
-*.swp
-*.zip
-*.tar.gz
-*.tar.bz2
-*.tar
-*.gz
-*.bz2
-*.7z
-*.exe
-*.dll
-*.so
-*.dylib
-*.out
-*.obj
-*.o
-*.a
-*.lib
-*.pdb
-*.idb
-*.mod
-*.cmd
