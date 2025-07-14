@@ -1,5 +1,5 @@
-use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TradeOrder {
@@ -16,12 +16,12 @@ pub struct TradeOrder {
     pub side: OrderSide,
 
     /// Quantity of the instrument involved in the order (e.g. number of shares, currency volume, number of contracts).
-    pub quantity: u64,
+    pub quantity: u32,
 
     /// Price of the order. Optional, as Market orders do not have a specified price.
     pub price: Option<Decimal>,
     /// Commission charged for the order.
-    pub commission: Option<Decimal>,
+    pub commission: Decimal,
     /// Current status of the order.
     pub status: OrderStatus,
 
