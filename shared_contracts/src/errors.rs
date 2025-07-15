@@ -1,8 +1,8 @@
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error,PartialEq)]
 pub enum TradeLoaderError {
-    #[error("Lod error: {0}")]
+    #[error("Load error: {0}")]
     Load(String),
     #[error("Parse error: {0}")]
     Parse(String),

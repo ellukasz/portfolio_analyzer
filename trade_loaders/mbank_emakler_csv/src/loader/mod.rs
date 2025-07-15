@@ -1,2 +1,0 @@
-mod mapper;
-mod model;

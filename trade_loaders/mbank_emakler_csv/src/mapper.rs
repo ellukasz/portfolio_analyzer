@@ -9,7 +9,7 @@ use shared_contracts::models::trade_order::{
 };
 use std::str::FromStr;
 
-fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
+pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
     let order = TradeOrder {
         instrument_symbol: record.instrument_symbol.clone(),
         instrument_type: InstrumentType::Stock,
@@ -123,7 +123,7 @@ mod tests {
     use shared_contracts::models::trade_order::OrderType;
 
     #[test]
-    fn limit_order_type() {
+    fn map_order_type_activation_limit_empty_return_limit() {
         let record = _record_with_price_limit("10", "");
 
         let actual_order_type = _map_order_type(&record);
@@ -132,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn stop_limit_order_type() {
+    fn map_order_type_activation_limit_not_empty_return_stop_limit() {
         let record = _record_with_price_limit("10", "9");
 
         let actual_order_type = _map_order_type(&record);
@@ -141,7 +141,8 @@ mod tests {
         assert_eq!(actual_order_type.unwrap(), expected_order_type);
     }
 
-    fn submission_time() {
+    #[test]
+    fn map_warsaw_time_to_utc_order_date_not_empty_return_utc() {
         let record = _default_record();
         let actual_date_time = _map_warsaw_time_to_utc(&record.order_date).unwrap();
         let expected_date_time = Utc.with_ymd_and_hms(2025, 07, 14, 17, 20, 25).unwrap();
@@ -166,6 +167,7 @@ mod tests {
                 .unwrap(),
         }
     }
+
     fn _default_record() -> Csv {
         Csv {
             price_limit: "10.00".to_string(),
