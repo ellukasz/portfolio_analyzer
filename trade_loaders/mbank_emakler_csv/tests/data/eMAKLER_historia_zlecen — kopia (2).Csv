@@ -1,19 +1,19 @@
-mBank S.A. Bankowo�� Detaliczna
+mBank S.A. Bankowo?? Detaliczna
 Skrytka Pocztowa 2108
-90-959 ��d� 2
+90-959 ??d? 2
 www.mBank.pl
 mLinia: 801 300 800
 +48 (42) 6 300 800
 
-eMAKLER - Historia zlece�
+eMAKLER - Historia zlece?
 
-#Imi� i nazwisko
+#Imi? i nazwisko
 Jan Nowak
 
 #Nr rachunku mBM
 111111
 
-#Nr rachunku powi�zanego
+#Nr rachunku powi?zanego
 #
 
 #Data
@@ -32,10 +32,10 @@ Brak
 #Wybrany papier
 Brak
 
-Stan;Papier;Giełda;K/S;Liczba zlecona;Liczba zrealizowana;Limit ceny;Walute;Limit aktywacji;Data zlecenia
-Przyj�te;AAA;WWA-GPW;S;1;0;18,80;PLN;18,80;16.06.2025 22:11:01
-Przyj�te;AAA;WWA-GPW;K;1;0;18,80;PLN;18,80;16.06.2025 21:11:01
-Zamkni�te;AAA;WWA-GPW;S;2;0;18,70;PLN;18,70;15.06.2025 20:05:28
+Stan;Papier;Gie?da;K/S;Liczba zlecona;Liczba zrealizowana;Limit ceny;Walute;Limit aktywacji;Data zlecenia
+Przyj?te;AAA;WWA-GPW;S;1;0;18,80;PLN;18,80;16.06.2025 22:11:01
+Przyj?te;AAA;WWA-GPW;K;1;0;18,80;PLN;18,80;16.06.2025 21:11:01
+Zamkni?te;AAA;WWA-GPW;S;2;0;18,70;PLN;18,70;15.06.2025 20:05:28
 Zrealizowane;AAA;WWA-GPW;S;3;200;19,20;PLN;;13.06.2025 10:52:49
 Anulowane;AAA;WWA-GPW;S;4;0;20,00;PLN;;11.06.2025 20:42:36
 Anulowane;AAA;WWA-GPW;K;5;0;20,00;PLN;;11.06.2025 21:22:36

@@ -1,4 +1,4 @@
-mBank S.A. Bankowo�� Detaliczna
+﻿mBank S.A. Bankowo�� Detaliczna
 Skrytka Pocztowa 2108
 90-959 ��d� 2
 www.mBank.pl
@@ -32,7 +32,7 @@ Brak
 #Wybrany papier
 Brak
 
-Stan;Papier;Giełda;K/S;Liczba zlecona;Liczba zrealizowana;Limit ceny;Walute;Limit aktywacji;Data zlecenia
+Stan;Papier;Gie�da;K/S;Liczba zlecona;Liczba zrealizowana;Limit ceny;Walute;Limit aktywacji;Data zlecenia
 Przyj�te;AAA;WWA-GPW;S;1;0;18,80;PLN;18,80;16.06.2025 22:11:01
 Przyj�te;AAA;WWA-GPW;K;1;0;18,80;PLN;18,80;16.06.2025 21:11:01
 Zamkni�te;AAA;WWA-GPW;S;2;0;18,70;PLN;18,70;15.06.2025 20:05:28

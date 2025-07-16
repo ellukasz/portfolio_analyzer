@@ -12,4 +12,6 @@ serde = { version = "1.0", features = ["derive"] }
 shared_contracts = { path = "../../shared_contracts" }
 chrono =  { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10" 
-rust_decimal = "1.37.2"
+rust_decimal = "1.37"
+encoding_rs_io = "0.1"
+encoding_rs = "0.8" 
