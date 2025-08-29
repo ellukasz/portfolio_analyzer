@@ -34,9 +34,9 @@ pub(super) struct Csv {
     #[serde(rename = "K/S")]
     pub side: String,
     #[serde(rename = "Liczba zlecona")]
-    pub ordered_quantity: u32,
+    pub quantity: u32,
     #[serde(rename = "Liczba zrealizowana")]
-    pub fulfilled_quantity: u32,
+    pub filled_quantity: u32,
     #[serde(rename = "Limit ceny")]
     pub price_limit: String,
     #[serde(rename = "Walute")]

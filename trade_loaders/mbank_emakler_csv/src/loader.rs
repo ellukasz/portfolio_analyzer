@@ -5,7 +5,7 @@ use encoding_rs_io::{DecodeReaderBytes, DecodeReaderBytesBuilder};
 use shared_contracts::errors::TradeLoaderError;
 use shared_contracts::models::trade_order::TradeOrder;
 use std::collections::HashSet;
-use std::fs::{File, ReadDir};
+use std::fs::File;
 use std::io::{BufReader, Seek, SeekFrom};
 
 pub fn load(file_path: &str) -> Result<Vec<TradeOrder>, TradeLoaderError> {
@@ -13,19 +13,19 @@ pub fn load(file_path: &str) -> Result<Vec<TradeOrder>, TradeLoaderError> {
 
     let csv_model = _parse_from_header(header_position, file_path)?;
 
-    let domain_model = _map(csv_model);
-
-    return domain_model;
+    _map(csv_model)
 }
+
+type CsvReader = Reader<DecodeReaderBytes<BufReader<File>, Vec<u8>>>;
 
 fn _new_csv_reader(
     file_path: &str,
     position: Option<csv::Position>,
     has_header: bool,
     flexible: bool,
-) -> Result<Reader<DecodeReaderBytes<BufReader<File>, Vec<u8>>>, TradeLoaderError> {
+) -> Result<CsvReader, TradeLoaderError> {
     let file = File::open(file_path).map_err(|e| {
-        TradeLoaderError::Load(format!("can't open file:{}, err:{} ", file_path, e))
+        TradeLoaderError::Load(format!("can't open file:{file_path:?}, err:{e:?} "))
     })?;
 
     let mut reader = BufReader::new(file);
@@ -34,8 +34,7 @@ fn _new_csv_reader(
             .seek(SeekFrom::Start(position.unwrap().byte()))
             .map_err(|e| {
                 TradeLoaderError::Parse(format!(
-                    "failed to set file position file: {}, err:{}",
-                    file_path, e
+                    "failed to set file position file: {file_path:?}, err:{e:?}"
                 ))
             })?;
     }
@@ -67,8 +66,7 @@ fn _find_header_position(path: &str) -> Result<csv::Position, TradeLoaderError> 
 
         if record.is_none() {
             return Err(TradeLoaderError::Parse(format!(
-                "csv file: {} does not contain a header",
-                path
+                "csv file: {path:?} does not contain a header"
             )));
         }
 
@@ -95,7 +93,7 @@ fn _parse_from_header(
 
     for result in rdr.deserialize() {
         let csv_model: Csv = result
-            .map_err(|e| TradeLoaderError::Parse(format!("Failed to parse CSV record: {}", e)))?;
+            .map_err(|e| TradeLoaderError::Parse(format!("failed to parse CSV record: {e:?}")))?;
         records.push(csv_model);
     }
     Ok(records)
@@ -119,7 +117,7 @@ mod tests {
         let position = _find_header_position(file_path).unwrap();
 
         let r = _parse_from_header(position, file_path).unwrap();
-        print!("Parsed records: {:?}", r);
+
         assert_eq!(r.len(), 31);
     }
 }

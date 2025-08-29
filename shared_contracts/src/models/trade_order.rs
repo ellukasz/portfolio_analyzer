@@ -15,13 +15,18 @@ pub struct TradeOrder {
     /// Side of the order (Buy or Sell).
     pub side: OrderSide,
 
-    /// Quantity of the instrument involved in the order (e.g. number of shares, currency volume, number of contracts).
+    /// Quantity that was ordered.
     pub quantity: u32,
+
+    /// Quantity of the instrument that has been filled/executed.
+    pub filled_quantity: u32,
 
     /// Price of the order. Optional, as Market orders do not have a specified price.
     pub price: Option<Decimal>,
+
     /// Commission charged for the order.
     pub commission: Decimal,
+
     /// Current status of the order.
     pub status: OrderStatus,
 
