@@ -1,5 +1,8 @@
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
+use strum_macros::Display;
+
+pub const DEFAULT_MONEY_SCALE: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TradeOrder {
@@ -22,9 +25,11 @@ pub struct TradeOrder {
     pub filled_quantity: u32,
 
     /// Price of the order. Optional, as Market orders do not have a specified price.
+    /// scale default to 2
     pub price: Option<Decimal>,
 
     /// Commission charged for the order.
+    ///  scale default to 2
     pub commission: Decimal,
 
     /// Current status of the order.
@@ -41,13 +46,13 @@ pub struct TradeOrder {
 }
 
 /// Types of financial instruments.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
 pub enum InstrumentType {
     Stock,
 }
 
 /// Stock order types.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
 pub enum OrderType {
     Market,
     Limit,
@@ -56,14 +61,14 @@ pub enum OrderType {
 
 /// Side of the order (Buy or Sell).
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
 pub enum OrderSide {
     Buy,
     Sell,
 }
 
 /// Status of the order.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
 pub enum OrderStatus {
     Pending,
     PartiallyFilled,

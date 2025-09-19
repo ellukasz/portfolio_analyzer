@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use shared_contracts::errors::TradeLoaderError;
 use shared_contracts::models::trade_order::{
-    InstrumentType, OrderSide, OrderStatus, OrderType, TradeOrder,
+    DEFAULT_MONEY_SCALE, InstrumentType, OrderSide, OrderStatus, OrderType, TradeOrder,
 };
 use std::str::FromStr;
 
@@ -76,36 +76,27 @@ fn _map_order_type(record: &Csv) -> Result<OrderType, TradeLoaderError> {
     }
 }
 
-fn _map_price(record: &Csv) -> Result<Option<rust_decimal::Decimal>, TradeLoaderError> {
-    if !record.price_limit.is_empty() {
-        Decimal::from_str(&record.price_limit)
-            .map_err(|e| {
-                TradeLoaderError::Parse(format!(
-                    "Failed to parse price limit: {}, err: {}",
-                    record.price_limit, e
-                ))
-            })
-            .map(Some)
-    } else {
-        Err(TradeLoaderError::Parse(
-            format!("Unknown price, record:{record:?}").to_string(),
-        ))
+fn _map_price(record: &Csv) -> Result<Option<Decimal>, TradeLoaderError> {
+    if record.price_limit.is_empty() {
+        return Ok(None);
     }
+
+    let mut price = Decimal::from_str(&record.price_limit)?;
+    price.rescale(DEFAULT_MONEY_SCALE);
+    Ok(Some(price))
 }
 
 fn _map_commission(record: &Csv) -> Result<Decimal, TradeLoaderError> {
     let fulfilled_quantity: Decimal = Decimal::from_u32(record.filled_quantity)
         .expect("Fulfilled quantity should be a valid u32");
 
-    let price_limit: Decimal = Decimal::from_str(&record.price_limit).map_err(|e| {
-        TradeLoaderError::Parse(format!(
-            "Failed to parse price limit: {}, e:{}",
-            record.price_limit, e
-        ))
-    })?;
+    let price_limit: Decimal = Decimal::from_str(&record.price_limit)?;
 
-    let mbank_percentage: Decimal = Decimal::from_str("0.039").unwrap();
-    let mbank_thrashold = Decimal::from_str("5.00").unwrap();
+    let mut mbank_percentage: Decimal = Decimal::from_str("0.039")?;
+    mbank_percentage.rescale(DEFAULT_MONEY_SCALE);
+
+    let mut mbank_thrashold = Decimal::from_str("5.00")?;
+    mbank_thrashold.rescale(DEFAULT_MONEY_SCALE);
 
     let commission = (price_limit * fulfilled_quantity) * mbank_percentage;
 

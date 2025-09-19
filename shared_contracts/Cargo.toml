@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rust_decimal = "1.37"
+rust_decimal = "1.38"
 chrono = "0.4"
 thiserror = "2.0"
 polars = "0.50"
+strum = "0.26"
+strum_macros = "0.26"

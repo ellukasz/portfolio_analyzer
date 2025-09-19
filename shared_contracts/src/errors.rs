@@ -1,4 +1,5 @@
 use polars::prelude::PolarsError;
+use rust_decimal::Error as DecimalError;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq)]
@@ -7,6 +8,8 @@ pub enum TradeLoaderError {
     Load(String),
     #[error("Parse error: {0}")]
     Parse(String),
+    #[error("Money conversion error: {0}")]
+    MoneyConversionError(#[from] DecimalError),
 }
 
 #[derive(Debug, Error)]
