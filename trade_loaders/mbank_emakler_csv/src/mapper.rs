@@ -76,13 +76,18 @@ fn _map_order_type(record: &Csv) -> Result<OrderType, TradeLoaderError> {
     }
 }
 
+fn _money_from_str(value: &str) -> Result<Decimal, TradeLoaderError> {
+    let mut decimal = Decimal::from_str(value)?;
+    decimal.rescale(DEFAULT_MONEY_SCALE);
+    Ok(decimal)
+}
+
 fn _map_price(record: &Csv) -> Result<Option<Decimal>, TradeLoaderError> {
     if record.price_limit.is_empty() {
         return Ok(None);
     }
 
-    let mut price = Decimal::from_str(&record.price_limit)?;
-    price.rescale(DEFAULT_MONEY_SCALE);
+    let price = _money_from_str(&record.price_limit)?;
     Ok(Some(price))
 }
 
@@ -90,13 +95,11 @@ fn _map_commission(record: &Csv) -> Result<Decimal, TradeLoaderError> {
     let fulfilled_quantity: Decimal = Decimal::from_u32(record.filled_quantity)
         .expect("Fulfilled quantity should be a valid u32");
 
-    let price_limit: Decimal = Decimal::from_str(&record.price_limit)?;
+    let price_limit: Decimal = _money_from_str(&record.price_limit)?;
 
-    let mut mbank_percentage: Decimal = Decimal::from_str("0.039")?;
-    mbank_percentage.rescale(DEFAULT_MONEY_SCALE);
+    let mbank_percentage: Decimal = Decimal::from_str("0.039")?;
 
-    let mut mbank_thrashold = Decimal::from_str("5.00")?;
-    mbank_thrashold.rescale(DEFAULT_MONEY_SCALE);
+    let mbank_thrashold = Decimal::from_str("5.00")?;
 
     let commission = (price_limit * fulfilled_quantity) * mbank_percentage;
 
