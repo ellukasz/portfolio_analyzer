@@ -45,9 +45,9 @@ fn _convert_to_vectors(trade_orders: Vec<TradeOrder>) -> Result<Vectors, ReportE
         )?);
         order_sides.push(order.side.to_string());
         filed_quenties.push(order.filled_quantity);
-        //todo check scale
-        prices.push(order.price.map_or(0, |p| p.mantissa()));
-        commissions.push(order.commission.mantissa());
+
+        prices.push(order.price.map_or(0_i128, |p| p.to_i128()));
+        commissions.push(order.commission.to_i128());
     }
 
     let res = Vectors {

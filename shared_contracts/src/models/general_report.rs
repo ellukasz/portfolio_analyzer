@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
+
+use crate::models::money::Money;
 
 pub struct GeneralReport {
     pub trade_period: TradePeriod,
@@ -13,5 +14,6 @@ pub struct TradePeriod {
 
 pub struct TransactionSummary {
     pub total_quantity: u32,
-    pub total_value: Decimal,
+    pub total_value: Money,
+    pub total_commission: Money,
 }

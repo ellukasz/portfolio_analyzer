@@ -1,10 +1,10 @@
 use crate::data_frame_factory;
 use chrono::{DateTime, Utc};
 use polars::prelude::*;
-use rust_decimal::Decimal;
 use shared_contracts::errors::ReportError;
 use shared_contracts::models::general_report::*;
-use shared_contracts::models::trade_order::{DEFAULT_MONEY_SCALE, OrderSide, TradeOrder};
+use shared_contracts::models::money::Money;
+use shared_contracts::models::trade_order::{OrderSide, TradeOrder};
 
 pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError> {
     let orders = data_frame_factory::create_with_filled_orders(trade_order)?;
@@ -25,6 +25,11 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
                 .otherwise(lit(0_i128))
                 .sum()
                 .alias("buy_price"),
+            when(col("order_side").eq(lit(OrderSide::Buy.to_string())))
+                .then(col("commission"))
+                .otherwise(lit(0_i128))
+                .sum()
+                .alias("buy_total_commission"),
         ])
         .collect()?;
 
@@ -35,15 +40,16 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
         },
         buy_summary: TransactionSummary {
             total_quantity: _to_u32(summary.column("buy_total_quantity")?.get(0)?)?,
-            total_value: _to_decimal(summary.column("buy_price")?.get(0)?)?,
+            total_value: _to_money(summary.column("buy_price")?.get(0)?)?,
+            total_commission: _to_money(summary.column("buy_total_commission")?.get(0)?)?,
         },
     };
 
     Ok(report)
 }
-fn _to_decimal(val: AnyValue) -> Result<Decimal, ReportError> {
+fn _to_money(val: AnyValue) -> Result<Money, ReportError> {
     match val {
-        AnyValue::Int128(v) => Ok(Decimal::from_i128_with_scale(v, DEFAULT_MONEY_SCALE)),
+        AnyValue::Int128(v) => Ok(Money::from_i128(v)),
         _ => Err(ReportError::Error(
             "Failed to convert AnyValue to Decimal".to_string(),
         )),
@@ -71,7 +77,6 @@ fn _to_datetime(val: AnyValue) -> Result<DateTime<Utc>, ReportError> {
 mod tests {
     use super::*;
     use chrono::TimeZone;
-    use rust_decimal::Decimal;
     use shared_contracts::models::trade_order::*;
 
     fn _orders() -> Vec<TradeOrder> {
@@ -83,8 +88,8 @@ mod tests {
                 side: OrderSide::Buy,
                 quantity: 10,
                 filled_quantity: 1,
-                price: Some(Decimal::from_i128_with_scale(1000, DEFAULT_MONEY_SCALE)), // $100.00
-                commission: Decimal::new(1, 2),                                        // $0.01
+                price: Some(Money::from_i128(1000)), // $100.00
+                commission: Money::from_i128(100),   // $0.01
                 status: OrderStatus::Filled,
                 submission_time: Utc.with_ymd_and_hms(2023, 1, 15, 10, 0, 0).unwrap(),
                 currency: "USD".to_string(),
@@ -97,8 +102,8 @@ mod tests {
                 side: OrderSide::Buy,
                 quantity: 2,
                 filled_quantity: 2,
-                price: Some(Decimal::from_i128_with_scale(1000, DEFAULT_MONEY_SCALE)),
-                commission: Decimal::new(1, 2), // $0.01
+                price: Some(Money::from_i128(1000)),
+                commission: Money::from_i128(200),
                 status: OrderStatus::Filled,
                 submission_time: Utc.with_ymd_and_hms(2024, 1, 15, 10, 0, 0).unwrap(),
                 currency: "USD".to_string(),
@@ -111,8 +116,8 @@ mod tests {
                 side: OrderSide::Sell,
                 quantity: 20,
                 filled_quantity: 2,
-                price: Some(Decimal::from_i128_with_scale(2000, DEFAULT_MONEY_SCALE)),
-                commission: Decimal::from_i128_with_scale(2, DEFAULT_MONEY_SCALE),
+                price: Some(Money::from_i128(2000)),
+                commission: Money::from_i128(2),
                 status: OrderStatus::Filled,
                 submission_time: Utc.with_ymd_and_hms(2025, 2, 15, 10, 0, 0).unwrap(),
                 currency: "USD".to_string(),
@@ -137,14 +142,17 @@ mod tests {
     #[test]
     fn buy_total_quantity() {
         let report = create(_orders()).unwrap();
-        assert_eq!(report.buy_summary.total_quantity, 20);
+        assert_eq!(report.buy_summary.total_quantity, 3);
     }
+
     #[test]
     fn buy_total_value() {
         let report = create(_orders()).unwrap();
-        assert_eq!(
-            report.buy_summary.total_value,
-            Decimal::new(3000, DEFAULT_MONEY_SCALE)
-        );
+        assert_eq!(report.buy_summary.total_value, Money::from_i128(3000));
+    }
+    #[test]
+    fn buy_total_commission() {
+        let report = create(_orders()).unwrap();
+        assert_eq!(report.buy_summary.total_commission, Money::from_i128(300));
     }
 }

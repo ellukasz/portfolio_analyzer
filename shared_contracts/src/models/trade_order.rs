@@ -1,7 +1,7 @@
+use crate::models::money::Money;
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use strum_macros::Display;
-
+//todo move to money.rs
 pub const DEFAULT_MONEY_SCALE: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -26,11 +26,11 @@ pub struct TradeOrder {
 
     /// Price of the order. Optional, as Market orders do not have a specified price.
     /// scale default to 2
-    pub price: Option<Decimal>,
+    pub price: Option<Money>,
 
     /// Commission charged for the order.
     ///  scale default to 2
-    pub commission: Decimal,
+    pub commission: Money,
 
     /// Current status of the order.
     pub status: OrderStatus,
