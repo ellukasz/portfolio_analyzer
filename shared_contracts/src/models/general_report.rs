@@ -5,6 +5,7 @@ use crate::models::money::Money;
 pub struct GeneralReport {
     pub trade_period: TradePeriod,
     pub buy_summary: TransactionSummary,
+    pub sell_summary: TransactionSummary,
 }
 
 pub struct TradePeriod {

@@ -15,6 +15,7 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
         .select([
             col("submission_time").min().alias("trade_period_start"),
             col("submission_time").max().alias("trade_period_end"),
+            // buy summary
             when(col("order_side").eq(lit(OrderSide::Buy.to_string())))
                 .then(col("filled_quantity"))
                 .otherwise(lit(0_u32))
@@ -24,12 +25,28 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
                 .then(col("price") * col("filled_quantity"))
                 .otherwise(lit(0_i128))
                 .sum()
-                .alias("buy_price"),
+                .alias("buy_total_price"),
             when(col("order_side").eq(lit(OrderSide::Buy.to_string())))
                 .then(col("commission"))
                 .otherwise(lit(0_i128))
                 .sum()
                 .alias("buy_total_commission"),
+            // sell summary
+            when(col("order_side").eq(lit(OrderSide::Sell.to_string())))
+                .then(col("filled_quantity"))
+                .otherwise(lit(0_u32))
+                .sum()
+                .alias("sell_total_quantity"),
+            when(col("order_side").eq(lit(OrderSide::Sell.to_string())))
+                .then(col("price") * col("filled_quantity"))
+                .otherwise(lit(0_i128))
+                .sum()
+                .alias("sell_total_price"),
+            when(col("order_side").eq(lit(OrderSide::Sell.to_string())))
+                .then(col("commission"))
+                .otherwise(lit(0_i128))
+                .sum()
+                .alias("sell_total_commission"),
         ])
         .collect()?;
 
@@ -40,8 +57,13 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
         },
         buy_summary: TransactionSummary {
             total_quantity: _to_u32(summary.column("buy_total_quantity")?.get(0)?)?,
-            total_value: _to_money(summary.column("buy_price")?.get(0)?)?,
+            total_value: _to_money(summary.column("buy_total_price")?.get(0)?)?,
             total_commission: _to_money(summary.column("buy_total_commission")?.get(0)?)?,
+        },
+        sell_summary: TransactionSummary {
+            total_quantity: _to_u32(summary.column("sell_total_quantity")?.get(0)?)?,
+            total_value: _to_money(summary.column("sell_total_price")?.get(0)?)?,
+            total_commission: _to_money(summary.column("sell_total_commission")?.get(0)?)?,
         },
     };
 

@@ -17,6 +17,8 @@ fn trade_period_calculation() {
     );
 }
 
+//buy summary tests
+
 #[test]
 fn buy_total_quantity() {
     let report = report::create(test_data::orders()).unwrap();
@@ -32,4 +34,23 @@ fn buy_total_value() {
 fn buy_total_commission() {
     let report = report::create(test_data::orders()).unwrap();
     assert_eq!(report.buy_summary.total_commission, Money::from_i128(300));
+}
+
+//sell summary tests
+
+#[test]
+fn sell_total_quantity() {
+    let report = report::create(test_data::orders()).unwrap();
+    assert_eq!(report.sell_summary.total_quantity, 3);
+}
+
+#[test]
+fn sell_total_value() {
+    let report = report::create(test_data::orders()).unwrap();
+    assert_eq!(report.sell_summary.total_value, Money::from_i128(3000));
+}
+#[test]
+fn sell_total_commission() {
+    let report = report::create(test_data::orders()).unwrap();
+    assert_eq!(report.sell_summary.total_commission, Money::from_i128(300));
 }
