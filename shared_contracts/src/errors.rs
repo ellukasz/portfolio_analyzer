@@ -20,4 +20,6 @@ pub enum ReportError {
     InputError(String),
     #[error("General error: {0}")]
     Error(String),
+    #[error("Missing data: {0}")]
+    MissingData(String),
 }

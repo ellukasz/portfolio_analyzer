@@ -1,3 +1,4 @@
+
 use crate::data_frame_factory;
 use chrono::{DateTime, Utc};
 use polars::prelude::*;
@@ -5,6 +6,7 @@ use shared_contracts::errors::ReportError;
 use shared_contracts::models::general_report::*;
 use shared_contracts::models::money::Money;
 use shared_contracts::models::trade_order::{OrderSide, TradeOrder};
+use rust_decimal::Decimal;
 
 pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError> {
     let orders = data_frame_factory::create_with_filled_orders(trade_order)?;
@@ -50,6 +52,7 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
         ])
         .collect()?;
 
+
     let report = GeneralReport {
         trade_period: TradePeriod {
             start: _to_datetime(summary.column("trade_period_start")?.get(0)?)?,
@@ -65,10 +68,64 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<GeneralReport, ReportError
             total_value: _to_money(summary.column("sell_total_price")?.get(0)?)?,
             total_commission: _to_money(summary.column("sell_total_commission")?.get(0)?)?,
         },
+        profit_summary: _profit_summary(summary)?,
     };
 
     Ok(report)
 }
+
+fn _profit_summary(summary:DataFrame) -> Result<ProfitSummary, ReportError> {
+    let total_buy = summary
+        .column("buy_total_price")?
+        .i128()?
+        .get(0)
+                .map(|v| Money::from_i128(v).to_decimal())
+
+        .ok_or_else(|| ReportError::Error("Failed to get buy_total_price".to_string()))?;
+
+    let total_sell = summary
+        .column("sell_total_price")?
+        .i128()?
+        .get(0)
+        .map(|v| Money::from_i128(v).to_decimal())
+        .ok_or_else(|| ReportError::Error("Failed to get sell_total_price".to_string()))?;
+
+    let buy_total_commission  = summary
+        .column("buy_total_commission")?
+        .i128()?
+        .get(0)
+        .map(|v| Money::from_i128(v).to_decimal())
+        .ok_or_else(|| ReportError::Error("Failed to get buy_buy_total_commissiontotal_price".to_string()))?;
+
+
+    let sell_total_commission = summary
+        .column("sell_total_commission")?
+        .i128()?
+        .get(0)
+                .map(|v| Money::from_i128(v).to_decimal())
+
+        .ok_or_else(|| ReportError::Error("Failed to get sell_buy_total_commissiontotal_price".to_string()))?;
+
+
+    let gross_profit = total_sell - total_buy;
+
+    //todo convert to constant
+    let tax_rate = Decimal::new(19,2);
+
+    let gross_price_with_commission = gross_profit -(buy_total_commission + sell_total_commission);
+
+    let tax =  gross_price_with_commission * tax_rate;
+
+    let net_profit = gross_price_with_commission - tax;
+
+    Ok(ProfitSummary {
+        gross_profit:Money::from_decimal(gross_profit),
+        gross_price_with_commission:Money::from_decimal(gross_price_with_commission),
+        tax:Money::from_decimal(tax),
+        net_profit:Money::from_decimal(net_profit)
+     })
+}
+
 fn _to_money(val: AnyValue) -> Result<Money, ReportError> {
     match val {
         AnyValue::Int128(v) => Ok(Money::from_i128(v)),
