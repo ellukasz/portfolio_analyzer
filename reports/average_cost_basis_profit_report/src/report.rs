@@ -4,7 +4,10 @@ use itertools::izip;
 use polars::prelude::*;
 use shared_contracts::{
     errors::ReportError,
-    models::trade_order::{OrderSide, TradeOrder},
+    models::{
+        money::Money,
+        trade_order::{OrderSide, TradeOrder},
+    },
 };
 
 pub struct Report {
@@ -18,11 +21,13 @@ pub struct Instrument {
     pub sell_quantity: u32,
     pub buy_commission: i128,
     pub sell_commission: i128,
-    pub buy_gross_value: i128,
-    pub sell_gross_value: i128,
-    pub buy_net_value: i128,
-    pub sell_net_value: i128,
-    pub buy_average_value: i128,
+    pub purchase_value: i128,
+    pub sale_value: i128,
+    pub cost_basis: i128,
+    pub net_proceeds: i128,
+    pub average_cost_basis: i128,
+    pub tax_base: i128,
+    pub tax_amount: Money,
 }
 
 pub struct TradePeriod {
@@ -65,21 +70,25 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<Report, ReportError> {
                 .then(col("price") * col("filled_quantity"))
                 .otherwise(lit(0_i128))
                 .sum()
-                .alias("buy_gross_value"),
+                .alias("purchase_value"),
             when(col("order_side").eq(lit(OrderSide::Sell.to_string())))
                 .then(col("price") * col("filled_quantity"))
                 .otherwise(lit(0_i128))
                 .sum()
-                .alias("sell_gross_value"),
+                .alias("sale_value"),
         ])
         .with_columns([
-            (col("buy_gross_value") + col("buy_commission")).alias("buy_net_value"),
-            (col("sell_gross_value") + col("sell_commission")).alias("sell_net_value"),
+            (col("purchase_value") + col("buy_commission")).alias("cost_basis"),
+            (col("sale_value") - col("sell_commission")).alias("net_proceeds"),
         ])
-        .with_columns([(col("buy_net_value") / col("buy_quantity")).alias("buy_average_value")])
+        .with_columns([(col("cost_basis") / col("buy_quantity")).alias("average_cost_basis")])
+        .with_columns([
+            (col("net_proceeds") - (col("average_cost_basis") * col("sell_quantity")))
+                .alias("tax_base"),
+        ])
+        .with_columns([((col("tax_base") * lit(19_i128)) / lit(100_i128)).alias("tax_amount")])
         .sort(["instrument_symbol"], Default::default())
         .collect()?;
-    //  println!("{}", df);
 
     let report = Report {
         instruments: _crete_instrument_report(&df)?,
@@ -96,14 +105,18 @@ struct AggregatedTradeItem<'a> {
     pub sell_quantity: Option<u32>,
     pub buy_commission: Option<i128>,
     pub sell_commission: Option<i128>,
-    pub buy_gross_value: Option<i128>,
-    pub sell_gross_value: Option<i128>,
-    pub buy_net_value: Option<i128>,
-    pub sell_net_value: Option<i128>,
-    pub buy_average_value: Option<i128>,
+    pub purchase_value: Option<i128>,
+    pub sale_value: Option<i128>,
+    pub cost_basis: Option<i128>,
+    pub net_proceeds: Option<i128>,
+    pub average_cost_basis: Option<i128>,
+    pub tax_base: Option<i128>,
+    pub tax_amount: Option<i128>,
 }
 
 fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportError> {
+    //   println!("{}", df);
+
     let combined_itr = _create_combined_trade_iterator(df)?;
 
     let res: Result<Vec<Instrument>, ReportError> = combined_itr
@@ -137,23 +150,34 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 .sell_commission
                 .ok_or(ReportError::MissingData("sell_commission".into()))?;
 
-            let buy_gross_value = item
-                .buy_gross_value
-                .ok_or(ReportError::MissingData("buy_gross_value".into()))?;
+            let purchase_value = item
+                .purchase_value
+                .ok_or(ReportError::MissingData("purchase_value".into()))?;
 
-            let sell_gross_value = item
-                .sell_gross_value
-                .ok_or(ReportError::MissingData("sell_gross_value".into()))?;
+            let sale_value = item
+                .sale_value
+                .ok_or(ReportError::MissingData("sale_value".into()))?;
 
-            let buy_net_value = item
-                .buy_net_value
-                .ok_or(ReportError::MissingData("buy_net_value".into()))?;
-            let sell_net_value = item
-                .sell_net_value
-                .ok_or(ReportError::MissingData("sell_net_value".into()))?;
-            let buy_average_value = item
-                .buy_average_value
-                .ok_or(ReportError::MissingData("buy_average_value".into()))?;
+            let cost_basis = item
+                .cost_basis
+                .ok_or(ReportError::MissingData("cost_basis".into()))?;
+
+            let net_proceeds = item
+                .net_proceeds
+                .ok_or(ReportError::MissingData("net_proceeds".into()))?;
+
+            let average_cost_basis = item
+                .average_cost_basis
+                .ok_or(ReportError::MissingData("average_cost_basis".into()))?;
+
+            let tax_base = item
+                .tax_base
+                .ok_or(ReportError::MissingData("tax_base".into()))?;
+
+            let tax_amount = item
+                .tax_amount
+                .map(Money::from_i128)
+                .ok_or(ReportError::MissingData("tax_amount".into()))?;
 
             Ok(Instrument {
                 instrument_symbol: ticker,
@@ -165,11 +189,13 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 sell_quantity,
                 buy_commission,
                 sell_commission,
-                buy_gross_value,
-                sell_gross_value,
-                buy_net_value,
-                sell_net_value,
-                buy_average_value,
+                purchase_value,
+                sale_value,
+                cost_basis,
+                net_proceeds,
+                average_cost_basis,
+                tax_base,
+                tax_amount,
             })
         })
         .collect();
@@ -189,13 +215,16 @@ fn _create_combined_trade_iterator<'a>(
     let buy_commission_iter = df.column("buy_commission")?.i128()?.into_iter();
     let sell_commission_iter = df.column("sell_commission")?.i128()?.into_iter();
 
-    let buy_gross_value_iter = df.column("buy_gross_value")?.i128()?.into_iter();
-    let sell_gross_value_iter = df.column("sell_gross_value")?.i128()?.into_iter();
+    let purchase_value_iter = df.column("purchase_value")?.i128()?.into_iter();
+    let sale_value_iter = df.column("sale_value")?.i128()?.into_iter();
 
-    let buy_net_value_iter = df.column("buy_net_value")?.i128()?.into_iter();
-    let sell_net_value_iter = df.column("sell_net_value")?.i128()?.into_iter();
+    let cost_basis_iter = df.column("cost_basis")?.i128()?.into_iter();
+    let net_proceeds_iter = df.column("net_proceeds")?.i128()?.into_iter();
 
-    let buy_average_value_iter = df.column("buy_average_value")?.i128()?.into_iter();
+    let average_cost_basis_iter = df.column("average_cost_basis")?.i128()?.into_iter();
+
+    let tax_base_iter = df.column("tax_base")?.i128()?.into_iter();
+    let tax_amount_iter = df.column("tax_amount")?.i128()?.into_iter();
 
     let combined_itr = izip!(
         ticker_iter,
@@ -205,11 +234,13 @@ fn _create_combined_trade_iterator<'a>(
         sell_quantity_iter,
         buy_commission_iter,
         sell_commission_iter,
-        buy_gross_value_iter,
-        sell_gross_value_iter,
-        buy_net_value_iter,
-        sell_net_value_iter,
-        buy_average_value_iter
+        purchase_value_iter,
+        sale_value_iter,
+        cost_basis_iter,
+        net_proceeds_iter,
+        average_cost_basis_iter,
+        tax_base_iter,
+        tax_amount_iter
     )
     .map(
         |(
@@ -220,11 +251,13 @@ fn _create_combined_trade_iterator<'a>(
             sell_quantity,
             buy_commission,
             sell_commission,
-            buy_gross_value,
-            sell_gross_value,
-            buy_net_value,
-            sell_net_value,
-            buy_average_value,
+            purchase_value,
+            sale_value,
+            cost_basis,
+            net_proceeds,
+            average_cost_basis,
+            tax_base,
+            tax_amount,
         )| {
             AggregatedTradeItem {
                 ticker,
@@ -234,11 +267,13 @@ fn _create_combined_trade_iterator<'a>(
                 sell_quantity,
                 buy_commission,
                 sell_commission,
-                buy_gross_value,
-                sell_gross_value,
-                buy_net_value,
-                sell_net_value,
-                buy_average_value,
+                purchase_value,
+                sale_value,
+                cost_basis,
+                net_proceeds,
+                average_cost_basis,
+                tax_base,
+                tax_amount,
             }
         },
     );
