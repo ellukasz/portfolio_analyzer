@@ -19,15 +19,16 @@ pub struct Instrument {
     pub trade_period: TradePeriod,
     pub buy_quantity: u32,
     pub sell_quantity: u32,
-    pub buy_commission: i128,
-    pub sell_commission: i128,
-    pub purchase_value: i128,
-    pub sale_value: i128,
-    pub cost_basis: i128,
-    pub net_proceeds: i128,
-    pub average_cost_basis: i128,
-    pub tax_base: i128,
+    pub buy_commission: Money,
+    pub sell_commission: Money,
+    pub purchase_value: Money,
+    pub sale_value: Money,
+    pub cost_basis: Money,
+    pub net_proceeds: Money,
+    pub average_cost_basis: Money,
+    pub tax_base: Money,
     pub tax_amount: Money,
+    pub net_profit: Money,
 }
 
 pub struct TradePeriod {
@@ -87,6 +88,9 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<Report, ReportError> {
                 .alias("tax_base"),
         ])
         .with_columns([((col("tax_base") * lit(19_i128)) / lit(100_i128)).alias("tax_amount")])
+        .with_columns([
+            (col("net_proceeds") - col("cost_basis") - col("tax_amount")).alias("net_profit"),
+        ])
         .sort(["instrument_symbol"], Default::default())
         .collect()?;
 
@@ -112,6 +116,7 @@ struct AggregatedTradeItem<'a> {
     pub average_cost_basis: Option<i128>,
     pub tax_base: Option<i128>,
     pub tax_amount: Option<i128>,
+    pub net_profit: Option<i128>,
 }
 
 fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportError> {
@@ -144,40 +149,53 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
 
             let buy_commission = item
                 .buy_commission
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("buy_commission".into()))?;
 
             let sell_commission = item
                 .sell_commission
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("sell_commission".into()))?;
 
             let purchase_value = item
                 .purchase_value
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("purchase_value".into()))?;
 
             let sale_value = item
                 .sale_value
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("sale_value".into()))?;
 
             let cost_basis = item
                 .cost_basis
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("cost_basis".into()))?;
 
             let net_proceeds = item
                 .net_proceeds
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("net_proceeds".into()))?;
 
             let average_cost_basis = item
                 .average_cost_basis
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("average_cost_basis".into()))?;
 
             let tax_base = item
                 .tax_base
+                .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("tax_base".into()))?;
 
             let tax_amount = item
                 .tax_amount
                 .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("tax_amount".into()))?;
+
+            let net_profit = item
+                .net_profit
+                .map(Money::from_i128)
+                .ok_or(ReportError::MissingData("net_profit".into()))?;
 
             Ok(Instrument {
                 instrument_symbol: ticker,
@@ -196,6 +214,7 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 average_cost_basis,
                 tax_base,
                 tax_amount,
+                net_profit,
             })
         })
         .collect();
@@ -225,6 +244,7 @@ fn _create_combined_trade_iterator<'a>(
 
     let tax_base_iter = df.column("tax_base")?.i128()?.into_iter();
     let tax_amount_iter = df.column("tax_amount")?.i128()?.into_iter();
+    let net_profit_iter = df.column("net_profit")?.i128()?.into_iter();
 
     let combined_itr = izip!(
         ticker_iter,
@@ -240,7 +260,8 @@ fn _create_combined_trade_iterator<'a>(
         net_proceeds_iter,
         average_cost_basis_iter,
         tax_base_iter,
-        tax_amount_iter
+        tax_amount_iter,
+        net_profit_iter
     )
     .map(
         |(
@@ -258,6 +279,7 @@ fn _create_combined_trade_iterator<'a>(
             average_cost_basis,
             tax_base,
             tax_amount,
+            net_profit,
         )| {
             AggregatedTradeItem {
                 ticker,
@@ -274,6 +296,7 @@ fn _create_combined_trade_iterator<'a>(
                 average_cost_basis,
                 tax_base,
                 tax_amount,
+                net_profit,
             }
         },
     );
