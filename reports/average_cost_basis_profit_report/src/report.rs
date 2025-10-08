@@ -11,9 +11,15 @@ use shared_contracts::{
 };
 
 pub struct Report {
+    pub summary: Summary,
     pub instruments: Vec<Instrument>,
 }
-
+pub struct Summary {
+    pub trade_period: TradePeriod,
+    pub commission_total: Money,
+    pub tax_amount_total: Money,
+    pub net_profit_total: Money,
+}
 pub struct Instrument {
     pub instrument_symbol: String,
     pub trade_period: TradePeriod,
@@ -94,13 +100,65 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<Report, ReportError> {
         .sort(["instrument_symbol"], Default::default())
         .collect()?;
 
+    let summary = df
+        .clone()
+        .lazy()
+        .select([
+            col("trade_period_start").min().alias("trade_period_start"),
+            col("trade_period_end").max().alias("trade_period_end"),
+            (col("buy_commission") + col("sell_commission"))
+                .sum()
+                .alias("commission_total"),
+            col("tax_amount").sum().alias("total_tax_amount"),
+            col("net_profit").sum().alias("total_net_profit"),
+        ])
+        .collect()?;
+
     let report = Report {
+        summary: Summary {
+            trade_period: _trade_period(&summary)?,
+            commission_total: _money(&summary, "commission_total")?,
+            tax_amount_total: _money(&summary, "total_tax_amount")?,
+            net_profit_total: _money(&summary, "total_net_profit")?,
+        },
         instruments: _crete_instrument_report(&df)?,
     };
 
     Ok(report)
 }
 
+fn _money(df: &DataFrame, column: &str) -> Result<Money, ReportError> {
+    let val = df
+        .column(column)?
+        .i128()?
+        .get(0)
+        .ok_or(ReportError::MissingData(format!(
+            "missing column {column} in summary"
+        )))?;
+
+    Ok(Money::from_i128(val))
+}
+
+fn _trade_period(df: &DataFrame) -> Result<TradePeriod, ReportError> {
+    let start = df
+        .column("trade_period_start")?
+        .i64()?
+        .get(0)
+        .ok_or(ReportError::MissingData(
+            "summary: trade_period_start".into(),
+        ))?;
+
+    let end = df
+        .column("trade_period_end")?
+        .i64()?
+        .get(0)
+        .ok_or(ReportError::MissingData("summary: trade_period_end".into()))?;
+
+    Ok(TradePeriod {
+        start: DateTime::<Utc>::from_timestamp_nanos(start),
+        end: DateTime::<Utc>::from_timestamp_nanos(end),
+    })
+}
 struct AggregatedTradeItem<'a> {
     pub ticker: Option<&'a str>,
     pub trade_period_start: Option<i64>,

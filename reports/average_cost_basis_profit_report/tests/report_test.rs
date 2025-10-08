@@ -113,6 +113,37 @@ fn instruments_net_profit() {
     assert_eq!(instruments.net_profit, Money::from_i128(1944));
 }
 
+#[test]
+fn summary_first_order_at() {
+    let summary = &_create_report().summary;
+    assert_eq!(
+        summary.trade_period.start,
+        Utc.with_ymd_and_hms(2023, 1, 1, 10, 0, 0).unwrap()
+    );
+    assert_eq!(
+        summary.trade_period.end,
+        Utc.with_ymd_and_hms(2026, 1, 2, 10, 0, 0).unwrap()
+    );
+}
+
+#[test]
+fn summary_total_commission() {
+    let summary = &_create_report().summary;
+    assert_eq!(summary.commission_total, Money::from_i128(600));
+}
+
+#[test]
+fn summary_tax_amount_total() {
+    let summary = &_create_report().summary;
+    assert_eq!(summary.tax_amount_total, Money::from_i128(456));
+}
+
+#[test]
+fn summary_net_profit_total() {
+    let summary = &_create_report().summary;
+    assert_eq!(summary.net_profit_total, Money::from_i128(1944));
+}
+
 fn _create_report() -> Report {
     report::create(test_data::orders()).unwrap()
 }
