@@ -1,5 +1,5 @@
 [package]
-name = "general_report"
+name = "average_cost_basis_profit_report"
 version = "0.1.0"
 edition = "2024"
 

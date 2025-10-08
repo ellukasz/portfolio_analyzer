@@ -1,8 +1,8 @@
+use average_cost_basis_profit_report::report;
 use chrono::TimeZone;
 use chrono::Utc;
-use general_report::report;
-use general_report::report::Report;
 use shared_contracts::models::money::Money;
+use shared_contracts::models::report::Report;
 mod test_data;
 
 #[test]

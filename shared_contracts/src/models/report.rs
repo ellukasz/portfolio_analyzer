@@ -1,0 +1,35 @@
+use chrono::{DateTime, Utc};
+
+use crate::models::money::Money;
+
+pub struct Report {
+    pub summary: Summary,
+    pub instruments: Vec<Instrument>,
+}
+pub struct Summary {
+    pub trade_period: TradePeriod,
+    pub commission_total: Money,
+    pub tax_amount_total: Money,
+    pub net_profit_total: Money,
+}
+pub struct Instrument {
+    pub instrument_symbol: String,
+    pub trade_period: TradePeriod,
+    pub buy_quantity: u32,
+    pub sell_quantity: u32,
+    pub buy_commission: Money,
+    pub sell_commission: Money,
+    pub purchase_value: Money,
+    pub sale_value: Money,
+    pub cost_basis: Money,
+    pub net_proceeds: Money,
+    pub average_cost_basis: Money,
+    pub tax_base: Money,
+    pub tax_amount: Money,
+    pub net_profit: Money,
+}
+
+pub struct TradePeriod {
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+}
