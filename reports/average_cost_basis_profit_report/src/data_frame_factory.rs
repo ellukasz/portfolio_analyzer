@@ -36,7 +36,10 @@ fn _convert_to_vectors(trade_orders: Vec<TradeOrder>) -> Result<Vectors, ReportE
     let mut instruments: Vec<String> = Vec::with_capacity(trade_orders.len());
 
     for order in trade_orders.iter() {
-        if order.status != OrderStatus::Filled && order.status != OrderStatus::PartiallyFilled {
+        if !matches!(
+            order.status,
+            OrderStatus::Filled | OrderStatus::PartiallyFilled
+        ) {
             continue;
         }
 

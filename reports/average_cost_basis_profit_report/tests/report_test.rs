@@ -16,7 +16,7 @@ fn instruments_first_order_at() {
     let instruments = &_create_report().instruments[0];
     assert_eq!(
         instruments.trade_period.start,
-        Utc.with_ymd_and_hms(2023, 1, 15, 10, 0, 0).unwrap()
+        Utc.with_ymd_and_hms(2023, 1, 1, 10, 0, 0).unwrap()
     );
 }
 
