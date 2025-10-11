@@ -2,7 +2,7 @@ use crate::data_frame_factory;
 use chrono::{DateTime, Utc};
 use itertools::izip;
 use polars::prelude::*;
-use shared_contracts::models::report::{Instrument, Report, Summary, TradePeriod};
+use shared_contracts::models::report::{Instrument, ProfitReport, Summary, TradePeriod};
 use shared_contracts::{
     errors::ReportError,
     models::{
@@ -11,7 +11,7 @@ use shared_contracts::{
     },
 };
 
-pub fn create(trade_order: Vec<TradeOrder>) -> Result<Report, ReportError> {
+pub fn create(trade_order: Vec<TradeOrder>) -> Result<ProfitReport, ReportError> {
     let dataset = data_frame_factory::create_with_filled_orders(trade_order)?;
 
     let df: DataFrame = dataset
@@ -83,7 +83,7 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<Report, ReportError> {
         ])
         .collect()?;
 
-    let report = Report {
+    let report = ProfitReport {
         summary: Summary {
             trade_period: _trade_period(&summary)?,
             commission_total: _money(&summary, "commission_total")?,

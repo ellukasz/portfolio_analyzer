@@ -1,9 +1,10 @@
 use rust_decimal::Decimal;
+use serde::Serialize;
 use std::str::FromStr;
 
 const DEFAULT_MONEY_SCALE: u32 = 2;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, Serialize)]
 pub struct Money {
     value: Decimal,
 }

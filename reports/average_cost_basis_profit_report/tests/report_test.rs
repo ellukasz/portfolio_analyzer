@@ -2,7 +2,7 @@ use average_cost_basis_profit_report::report;
 use chrono::TimeZone;
 use chrono::Utc;
 use shared_contracts::models::money::Money;
-use shared_contracts::models::report::Report;
+use shared_contracts::models::report::ProfitReport;
 mod test_data;
 
 #[test]
@@ -144,6 +144,6 @@ fn summary_net_profit_total() {
     assert_eq!(summary.net_profit_total, Money::from_i128(1944));
 }
 
-fn _create_report() -> Report {
+fn _create_report() -> ProfitReport {
     report::create(test_data::orders()).unwrap()
 }

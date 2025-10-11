@@ -1,17 +1,24 @@
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 
 use crate::models::money::Money;
 
-pub struct Report {
+#[derive(Debug, Serialize)]
+pub struct ProfitReport {
+    #[serde(flatten)]
     pub summary: Summary,
+    #[serde(flatten)]
     pub instruments: Vec<Instrument>,
 }
+
+#[derive(Debug, Serialize)]
 pub struct Summary {
     pub trade_period: TradePeriod,
     pub commission_total: Money,
     pub tax_amount_total: Money,
     pub net_profit_total: Money,
 }
+#[derive(Debug, Serialize)]
 pub struct Instrument {
     pub instrument_symbol: String,
     pub trade_period: TradePeriod,
@@ -29,6 +36,7 @@ pub struct Instrument {
     pub net_profit: Money,
 }
 
+#[derive(Debug, Serialize)]
 pub struct TradePeriod {
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,

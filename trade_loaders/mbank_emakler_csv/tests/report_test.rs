@@ -1,8 +1,11 @@
+use std::path::Path;
+
 use mbank_emakler_csv::loader;
 
 #[test]
 fn load_invalid_file_return_error() {
-    let file_path = "trade_loaders/mbank_emakler_csv/tests/data/this_file_does_not_exist.CSV";
+    let file_path =
+        Path::new("trade_loaders/mbank_emakler_csv/tests/data/this_file_does_not_exist.CSV");
     let result = loader::load(file_path);
 
     assert!(result.is_err(), "Expected Err, got: {result:?}");

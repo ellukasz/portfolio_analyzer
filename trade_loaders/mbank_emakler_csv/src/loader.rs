@@ -7,8 +7,9 @@ use shared_contracts::models::trade_order::TradeOrder;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufReader, Seek, SeekFrom};
+use std::path::Path;
 
-pub fn load(file_path: &str) -> Result<Vec<TradeOrder>, TradeLoaderError> {
+pub fn load(file_path: &Path) -> Result<Vec<TradeOrder>, TradeLoaderError> {
     let header_position = _find_header_position(file_path)?;
 
     let csv_model = _parse_from_header(header_position, file_path)?;
@@ -19,7 +20,7 @@ pub fn load(file_path: &str) -> Result<Vec<TradeOrder>, TradeLoaderError> {
 type CsvReader = Reader<DecodeReaderBytes<BufReader<File>, Vec<u8>>>;
 
 fn _new_csv_reader(
-    file_path: &str,
+    file_path: &Path,
     position: Option<csv::Position>,
     has_header: bool,
     flexible: bool,
@@ -50,7 +51,7 @@ fn _new_csv_reader(
     Ok(rdr)
 }
 
-fn _find_header_position(path: &str) -> Result<csv::Position, TradeLoaderError> {
+fn _find_header_position(path: &Path) -> Result<csv::Position, TradeLoaderError> {
     let rdr = _new_csv_reader(path, None, false, true)?;
 
     let expected_headers = CSV_HEADER_FIELDS
@@ -85,7 +86,7 @@ fn _find_header_position(path: &str) -> Result<csv::Position, TradeLoaderError> 
 
 fn _parse_from_header(
     header_position: csv::Position,
-    path: &str,
+    path: &Path,
 ) -> Result<Vec<Csv>, TradeLoaderError> {
     let mut rdr = _new_csv_reader(path, Some(header_position), true, false)?;
 
@@ -112,7 +113,7 @@ mod tests {
     use super::*;
     #[test]
     fn parse() {
-        let file_path = "tests/data/eMAKLER_historia_zlecen.Csv";
+        let file_path = Path::new("tests/data/eMAKLER_historia_zlecen.Csv");
 
         let position = _find_header_position(file_path).unwrap();
 
