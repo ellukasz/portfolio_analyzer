@@ -22,8 +22,14 @@ impl Money {
     }
 
     pub fn from_string(value: &str) -> Self {
-        //todo fix error handling
-        let mut val = Decimal::from_str(value).expect("Failed to convert str to Decimal");
+        //TODO fix error handling
+        if value.trim().is_empty() {
+            return Self::zero();
+        }
+
+        let value_normalized = value.replace(',', ".");
+        let mut val =
+            Decimal::from_str(&value_normalized).expect("Failed to convert str to Decimal");
         val.rescale(DEFAULT_MONEY_SCALE);
         Self { value: val }
     }

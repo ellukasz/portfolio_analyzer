@@ -1,8 +1,7 @@
 use super::model::Csv;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Europe::Warsaw;
 use rust_decimal::Decimal;
-use rust_decimal::prelude::FromPrimitive;
 use shared_contracts::errors::TradeLoaderError;
 use shared_contracts::models::money::Money;
 use shared_contracts::models::trade_order::{
@@ -16,8 +15,8 @@ pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
         instrument_type: InstrumentType::Stock,
         order_type: _map_order_type(&record)?,
         side: _map_side(&record.side)?,
-        quantity: record.quantity,
-        filled_quantity: record.filled_quantity,
+        quantity: _map_u32(&record.quantity, "quantity")?,
+        filled_quantity: _map_u32(&record.filled_quantity, "filled_quantity")?,
         price: _map_price(&record)?,
         commission: _map_commission(&record)?,
         status: _map_status(&record.status)?,
@@ -27,7 +26,11 @@ pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
     };
     Ok(order)
 }
-
+fn _map_u32(value: &str, field_name: &str) -> Result<u32, TradeLoaderError> {
+    value.trim().parse::<u32>().map_err(|e| {
+        TradeLoaderError::Parse(format!("Invalid {field_name:?} value {value:?}: {e}"))
+    })
+}
 fn _map_status(status: &str) -> Result<OrderStatus, TradeLoaderError> {
     match status.trim().to_lowercase().as_str() {
         "przyjęte" => Ok(OrderStatus::Pending),
@@ -41,10 +44,11 @@ fn _map_status(status: &str) -> Result<OrderStatus, TradeLoaderError> {
     }
 }
 
-fn _map_warsaw_time_to_utc(
-    date: &chrono::NaiveDateTime,
-) -> Result<DateTime<Utc>, TradeLoaderError> {
-    match Warsaw.from_local_datetime(date) {
+fn _map_warsaw_time_to_utc(date_raw: &str) -> Result<DateTime<Utc>, TradeLoaderError> {
+    let date = NaiveDateTime::parse_from_str(date_raw, "%d.%m.%Y %H:%M:%S")
+        .map_err(|e| TradeLoaderError::Parse(format!("Invalid date {date_raw:?}: {e}")))?;
+
+    match Warsaw.from_local_datetime(&date) {
         chrono::offset::LocalResult::Single(dt) => Ok(dt.with_timezone(&Utc)),
         chrono::offset::LocalResult::Ambiguous(_dt1, _dt2) => Err(TradeLoaderError::Parse(
             format!("Unknown date time: {date:?}").to_string(),
@@ -57,7 +61,7 @@ fn _map_warsaw_time_to_utc(
 
 fn _map_side(side: &str) -> Result<OrderSide, TradeLoaderError> {
     match side.trim().to_uppercase().as_str() {
-        "B" => Ok(OrderSide::Buy),
+        "K" => Ok(OrderSide::Buy),
         "S" => Ok(OrderSide::Sell),
         _ => Err(TradeLoaderError::Parse(
             format!("Unknown order side, side:{side:?}").to_string(),
@@ -87,9 +91,13 @@ fn _map_price(record: &Csv) -> Result<Option<Money>, TradeLoaderError> {
 }
 
 fn _map_commission(record: &Csv) -> Result<Money, TradeLoaderError> {
-    let fulfilled_quantity: Decimal = Decimal::from_u32(record.filled_quantity)
-        .expect("Fulfilled quantity should be a valid u32");
-
+    let filled_quantity_raw = &record.filled_quantity;
+    let fulfilled_quantity: Decimal =
+        Decimal::from_str_exact(filled_quantity_raw).map_err(|e| {
+            TradeLoaderError::Parse(format!(
+                "Invalid filled_quantity value {filled_quantity_raw:?}: {e}"
+            ))
+        })?;
     let price_limit: Decimal = Money::from_string(&record.price_limit).to_decimal();
 
     let mbank_percentage: Decimal = Decimal::from_str("0.039")?;
@@ -108,7 +116,7 @@ fn _map_commission(record: &Csv) -> Result<Money, TradeLoaderError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{NaiveDate, Utc};
+    use chrono::Utc;
     use shared_contracts::models::trade_order::OrderType;
 
     #[test]
@@ -146,14 +154,11 @@ mod tests {
             instrument_symbol: "AAPL".to_string(),
             exchange: "NASDAQ".to_string(),
             side: "B".to_string(),
-            quantity: 100,
-            filled_quantity: 100,
+            quantity: "100".to_string(),
+            filled_quantity: "100".to_string(),
             status: "Zrealizowane".to_string(),
             currency: "USD".to_string(),
-            order_date: NaiveDate::from_ymd_opt(2025, 7, 14)
-                .unwrap()
-                .and_hms_opt(19, 20, 25)
-                .unwrap(),
+            order_date: "01.05.2025 15:09:10".to_string(),
         }
     }
 
@@ -164,14 +169,11 @@ mod tests {
             instrument_symbol: "AAPL".to_string(),
             exchange: "NASDAQ".to_string(),
             side: "B".to_string(),
-            quantity: 100,
-            filled_quantity: 100,
+            quantity: "100".to_string(),
+            filled_quantity: "100".to_string(),
             status: "Zrealizowane".to_string(),
             currency: "USD".to_string(),
-            order_date: NaiveDate::from_ymd_opt(2025, 7, 14)
-                .unwrap()
-                .and_hms_opt(19, 20, 25)
-                .unwrap(),
+            order_date: "01.04.2025 15:09:10".to_string(),
         }
     }
 }

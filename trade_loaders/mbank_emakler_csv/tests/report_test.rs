@@ -16,7 +16,7 @@ fn load_invalid_file_return_error() {
     );
 }
 
-//#[test]
+// #[test]
 // fn load_parse_file_return_trade_order() {
 //     let file_path = "./trade_loaders/mbank_emakler_csv/tests/data/eMAKLER_historia_zlecen.Csv";
 //     let result = loader::load(file_path);

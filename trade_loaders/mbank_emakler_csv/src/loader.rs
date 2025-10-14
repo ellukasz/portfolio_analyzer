@@ -1,106 +1,83 @@
 use crate::mapper;
-use crate::model::{CSV_HEADER_FIELDS, Csv};
-use csv::{Reader, ReaderBuilder, StringRecord};
-use encoding_rs_io::{DecodeReaderBytes, DecodeReaderBytesBuilder};
+use crate::model::{Csv, HEADER};
+use encoding_rs::WINDOWS_1250;
 use shared_contracts::errors::TradeLoaderError;
 use shared_contracts::models::trade_order::TradeOrder;
-use std::collections::HashSet;
-use std::fs::File;
-use std::io::{BufReader, Seek, SeekFrom};
+use std::fs;
+use std::io::Cursor;
 use std::path::Path;
 
 pub fn load(file_path: &Path) -> Result<Vec<TradeOrder>, TradeLoaderError> {
-    let header_position = _find_header_position(file_path)?;
-
-    let csv_model = _parse_from_header(header_position, file_path)?;
-
-    _map(csv_model)
+    let full_input = decode_windows1250(file_path)?;
+    let csv_data_bytes = remove_metadata(full_input)?;
+    let csv_model = parse(csv_data_bytes)?;
+    let orders = map(csv_model)?;
+    Ok(orders)
 }
 
-type CsvReader = Reader<DecodeReaderBytes<BufReader<File>, Vec<u8>>>;
+fn decode_windows1250(file: &Path) -> Result<String, TradeLoaderError> {
+    let bytes = fs::read(file)
+        .map_err(|e| TradeLoaderError::Load(format!("can't read file:{file:?}, err:{e:?} ")))?;
 
-fn _new_csv_reader(
-    file_path: &Path,
-    position: Option<csv::Position>,
-    has_header: bool,
-    flexible: bool,
-) -> Result<CsvReader, TradeLoaderError> {
-    let file = File::open(file_path).map_err(|e| {
-        TradeLoaderError::Load(format!("can't open file:{file_path:?}, err:{e:?} "))
-    })?;
+    let (full_input, _, malformed_content) = WINDOWS_1250.decode(&bytes);
 
-    let mut reader = BufReader::new(file);
-    if position.is_some() {
-        reader
-            .seek(SeekFrom::Start(position.unwrap().byte()))
-            .map_err(|e| {
-                TradeLoaderError::Parse(format!(
-                    "failed to set file position file: {file_path:?}, err:{e:?}"
-                ))
-            })?;
+    if malformed_content {
+        return Err(TradeLoaderError::Load(format!(
+            "file {file:?} contains malformed content that cannot be decoded as Windows-1250"
+        )));
     }
+    Ok(full_input.into_owned())
+}
 
-    let transcoded_reader = DecodeReaderBytesBuilder::new().build(reader);
+fn remove_metadata(csv: String) -> Result<Vec<u8>, TradeLoaderError> {
+    let mut header_found = false;
+    let mut csv_data_bytes: Vec<u8> = Vec::new();
 
-    let rdr = ReaderBuilder::new()
-        .has_headers(has_header)
-        .flexible(flexible)
+    for line in csv.lines() {
+        let cleaned_line2 = line.replace('\u{a0}', " ");
+        let cleaned_line = cleaned_line2.trim();
+
+        if header_found {
+            csv_data_bytes.extend_from_slice(cleaned_line.as_bytes());
+            csv_data_bytes.push(b'\n');
+        } else if line == HEADER {
+            csv_data_bytes.extend_from_slice(cleaned_line.as_bytes());
+            csv_data_bytes.push(b'\n');
+            header_found = true;
+        }
+    }
+    if !header_found {
+        return Err(TradeLoaderError::Load(format!(
+            "Can't find header: {HEADER:?} in file"
+        )));
+    }
+    Ok(csv_data_bytes)
+}
+
+fn parse(csv_data_bytes: Vec<u8>) -> Result<Vec<Csv>, TradeLoaderError> {
+    let csv_stream = Cursor::new(csv_data_bytes);
+    //  print!("{}",String::from_utf8(csv_stream.get_ref().to_vec()).unwrap());
+
+    let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b';')
-        .from_reader(transcoded_reader);
-
-    Ok(rdr)
-}
-
-fn _find_header_position(path: &Path) -> Result<csv::Position, TradeLoaderError> {
-    let rdr = _new_csv_reader(path, None, false, true)?;
-
-    let expected_headers = CSV_HEADER_FIELDS
-        .iter()
-        .map(|&field| field.to_lowercase())
-        .collect::<HashSet<String>>();
-
-    let mut iter = rdr.into_records();
-
-    loop {
-        let pos = iter.reader().position().clone();
-        let record: Option<Result<StringRecord, csv::Error>> = iter.next();
-
-        if record.is_none() {
-            return Err(TradeLoaderError::Parse(format!(
-                "csv file: {path:?} does not contain a header"
-            )));
-        }
-
-        let normalized_record = record
-            .unwrap()
-            .unwrap()
-            .iter()
-            .map(|r| r.to_lowercase())
-            .collect::<HashSet<String>>();
-
-        if expected_headers == normalized_record {
-            return Ok(pos);
-        }
-    }
-}
-
-fn _parse_from_header(
-    header_position: csv::Position,
-    path: &Path,
-) -> Result<Vec<Csv>, TradeLoaderError> {
-    let mut rdr = _new_csv_reader(path, Some(header_position), true, false)?;
+        .has_headers(true)
+        .flexible(false)
+        .from_reader(csv_stream);
 
     let mut records = Vec::new();
+    rdr.headers()
+        .iter()
+        .for_each(|f| println!("{}", f.as_slice()));
 
     for result in rdr.deserialize() {
-        let csv_model: Csv = result
+        let record: Csv = result
             .map_err(|e| TradeLoaderError::Parse(format!("failed to parse CSV record: {e:?}")))?;
-        records.push(csv_model);
+        records.push(record);
     }
     Ok(records)
 }
 
-fn _map(records: Vec<Csv>) -> Result<Vec<TradeOrder>, TradeLoaderError> {
+fn map(records: Vec<Csv>) -> Result<Vec<TradeOrder>, TradeLoaderError> {
     let mut orders = Vec::new();
     for record in records {
         orders.push(mapper::map(record)?);
@@ -113,11 +90,8 @@ mod tests {
     use super::*;
     #[test]
     fn parse() {
-        let file_path = Path::new("tests/data/eMAKLER_historia_zlecen.Csv");
-
-        let position = _find_header_position(file_path).unwrap();
-
-        let r = _parse_from_header(position, file_path).unwrap();
+        let file_path = Path::new("tests/data/test.Csv");
+        let r = load(file_path).unwrap();
 
         assert_eq!(r.len(), 31);
     }
