@@ -56,7 +56,6 @@ fn remove_metadata(csv: String) -> Result<Vec<u8>, TradeLoaderError> {
 
 fn parse(csv_data_bytes: Vec<u8>) -> Result<Vec<Csv>, TradeLoaderError> {
     let csv_stream = Cursor::new(csv_data_bytes);
-    //  print!("{}",String::from_utf8(csv_stream.get_ref().to_vec()).unwrap());
 
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b';')
@@ -65,9 +64,6 @@ fn parse(csv_data_bytes: Vec<u8>) -> Result<Vec<Csv>, TradeLoaderError> {
         .from_reader(csv_stream);
 
     let mut records = Vec::new();
-    rdr.headers()
-        .iter()
-        .for_each(|f| println!("{}", f.as_slice()));
 
     for result in rdr.deserialize() {
         let record: Csv = result
@@ -83,16 +79,4 @@ fn map(records: Vec<Csv>) -> Result<Vec<TradeOrder>, TradeLoaderError> {
         orders.push(mapper::map(record)?);
     }
     Ok(orders)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn parse() {
-        let file_path = Path::new("tests/data/test.Csv");
-        let r = load(file_path).unwrap();
-
-        assert_eq!(r.len(), 31);
-    }
 }

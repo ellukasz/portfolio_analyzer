@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use mbank_emakler_csv::loader;
+use shared_contracts::models::money::Money;
 
 #[test]
 fn load_invalid_file_return_error() {
-    let file_path =
-        Path::new("trade_loaders/mbank_emakler_csv/tests/data/this_file_does_not_exist.CSV");
+    let file_path = Path::new("/tests/data/this_file_does_not_exist.CSV");
     let result = loader::load(file_path);
 
     assert!(result.is_err(), "Expected Err, got: {result:?}");
@@ -16,18 +16,22 @@ fn load_invalid_file_return_error() {
     );
 }
 
-// #[test]
-// fn load_parse_file_return_trade_order() {
-//     let file_path = "./trade_loaders/mbank_emakler_csv/tests/data/eMAKLER_historia_zlecen.Csv";
-//     let result = loader::load(file_path);
+#[test]
+fn load_parse_file_return_trade_order() {
+    let file_path = Path::new("tests/data/test.Csv");
+    let result = loader::load(file_path);
 
-//     assert!(
-//         result.is_ok(),
-//         "Expected Ok for existing file, got: {result:?}"
-//     );
+    assert!(
+        result.is_ok(),
+        "Expected Ok for existing file, got: {result:?}"
+    );
 
-//     let records = result.unwrap();
-//     // Optionally, check the number of records or fields
-//     // assert_eq!(records.len(), expected_len);
-//     // assert_eq!(records[0].stan, "expected_value");
-// }
+    let records = result.unwrap();
+    let record = &records[0];
+
+    assert_eq!(record.exchange, "WWA-GPW".to_string(),);
+
+    assert_eq!(record.instrument_symbol, "AAAA".to_string(),);
+
+    assert_eq!(record.commission, Money::from_string("5"),);
+}
