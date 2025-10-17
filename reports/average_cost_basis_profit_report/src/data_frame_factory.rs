@@ -49,11 +49,11 @@ fn _convert_to_vectors(trade_orders: Vec<TradeOrder>) -> Result<Vectors, ReportE
 
         instruments.push(order.instrument_symbol.clone());
 
-        order_sides.push(order.side.to_string());
+        order_sides.push(order.order_side.to_string());
         filed_quenties.push(order.filled_quantity);
 
-        prices.push(order.price.map_or(0_i128, |p| p.to_i128()));
-        commissions.push(order.commission.to_i128());
+        prices.push(order.price.map_or(0_i128, |p| p.as_i128()));
+        commissions.push(order.commission.as_i128());
     }
 
     let res = Vectors {

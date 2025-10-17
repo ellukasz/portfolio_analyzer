@@ -9,7 +9,7 @@ pub enum TradeLoaderError {
     #[error("Parse error: {0}")]
     Parse(String),
     #[error("Money conversion error: {0}")]
-    MoneyConversionError(#[from] DecimalError),
+    MoneyConversion(#[from] DecimalError),
 }
 
 #[derive(Debug, Error)]

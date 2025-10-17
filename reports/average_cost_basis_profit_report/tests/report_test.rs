@@ -145,5 +145,5 @@ fn summary_net_profit_total() {
 }
 
 fn _create_report() -> ProfitReport {
-    report::create(test_data::orders()).unwrap()
+    report::from_vec(test_data::orders()).unwrap()
 }

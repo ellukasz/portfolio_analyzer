@@ -14,7 +14,7 @@ pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
         instrument_symbol: record.instrument_symbol.clone(),
         instrument_type: InstrumentType::Stock,
         order_type: _map_order_type(&record)?,
-        side: _map_side(&record.side)?,
+        order_side: _map_side(&record.side)?,
         quantity: _map_u32(&record.quantity, "quantity")?,
         filled_quantity: _map_u32(&record.filled_quantity, "filled_quantity")?,
         price: _map_price(&record)?,
@@ -34,8 +34,8 @@ fn _map_u32(value: &str, field_name: &str) -> Result<u32, TradeLoaderError> {
 fn _map_status(status: &str) -> Result<OrderStatus, TradeLoaderError> {
     match status.trim().to_lowercase().as_str() {
         "przyjęte" => Ok(OrderStatus::Pending),
-        "zamknięte" => Ok(OrderStatus::Filled),
-        "zrealizowane" => Ok(OrderStatus::Filled), // ? how to handle this?
+        "zamknięte" => Ok(OrderStatus::Closed),
+        "zrealizowane" => Ok(OrderStatus::Filled),
         "anulowane" => Ok(OrderStatus::Cancelled),
         "odrzucone" => Ok(OrderStatus::Rejected),
         _ => Err(TradeLoaderError::Parse(format!(
@@ -98,7 +98,7 @@ fn _map_commission(record: &Csv) -> Result<Money, TradeLoaderError> {
                 "Invalid filled_quantity value {filled_quantity_raw:?}: {e}"
             ))
         })?;
-    let price_limit: Decimal = Money::from_string(&record.price_limit).to_decimal();
+    let price_limit: Decimal = Money::from_string(&record.price_limit).as_decimal();
 
     let mbank_percentage: Decimal = Decimal::from_str("0.039")?;
 

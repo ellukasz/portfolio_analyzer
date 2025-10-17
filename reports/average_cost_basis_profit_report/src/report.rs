@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::data_frame_factory;
 use chrono::{DateTime, Utc};
 use itertools::izip;
@@ -11,9 +13,22 @@ use shared_contracts::{
     },
 };
 
-pub fn create(trade_order: Vec<TradeOrder>) -> Result<ProfitReport, ReportError> {
-    let dataset = data_frame_factory::create_with_filled_orders(trade_order)?;
+pub fn from_csv(trade_order_csv: &Path) -> Result<ProfitReport, ReportError> {
+    let df_csv = CsvReadOptions::default()
+        .with_has_header(true)
+        .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
+        .try_into_reader_with_file_path(Some(trade_order_csv.to_path_buf()))?
+        .finish()?;
 
+    create(df_csv)
+}
+
+pub fn from_vec(trade_order: Vec<TradeOrder>) -> Result<ProfitReport, ReportError> {
+    let dataset = data_frame_factory::create_with_filled_orders(trade_order)?;
+    create(dataset)
+}
+
+fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
     let df: DataFrame = dataset
         .clone()
         .lazy()
@@ -53,19 +68,34 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<ProfitReport, ReportError>
                 .sum()
                 .alias("sale_value"),
         ])
+        // Obliczenia bazowe
         .with_columns([
+            (col("buy_commission") + col("sell_commission")).alias("total_commission"),
             (col("purchase_value") + col("buy_commission")).alias("cost_basis"),
             (col("sale_value") - col("sell_commission")).alias("net_proceeds"),
         ])
+        // Średnia cena zakupu
         .with_columns([(col("cost_basis") / col("buy_quantity")).alias("average_cost_basis")])
+        //  Oblicza podatek tylko od sprzedanej ilości, używając średniej ceny
         .with_columns([
             (col("net_proceeds") - (col("average_cost_basis") * col("sell_quantity")))
                 .alias("tax_base"),
         ])
         .with_columns([((col("tax_base") * lit(19_i128)) / lit(100_i128)).alias("tax_amount")])
-        .with_columns([
-            (col("net_proceeds") - col("cost_basis") - col("tax_amount")).alias("net_profit"),
-        ])
+        // Zysk netto
+        .with_columns([(
+            // Jeśli istnieje jakakolwiek sprzedaż
+            when(col("sell_quantity").gt(lit(0_i128)))
+                .then(
+                    // Wtedy oblicz zysk/stratę
+                    col("net_proceeds") - col("cost_basis") - col("tax_amount"),
+                )
+                .otherwise(
+                    // W przeciwnym razie ustaw 0 (transakcja nierozliczona)
+                    lit(0_i128),
+                )
+                .alias("net_profit")
+        )])
         .sort(["instrument_symbol"], Default::default())
         .collect()?;
 
@@ -75,9 +105,7 @@ pub fn create(trade_order: Vec<TradeOrder>) -> Result<ProfitReport, ReportError>
         .select([
             col("trade_period_start").min().alias("trade_period_start"),
             col("trade_period_end").max().alias("trade_period_end"),
-            (col("buy_commission") + col("sell_commission"))
-                .sum()
-                .alias("commission_total"),
+            (col("total_commission")).sum().alias("commission_total"),
             col("tax_amount").sum().alias("total_tax_amount"),
             col("net_profit").sum().alias("total_net_profit"),
         ])
@@ -135,6 +163,7 @@ struct AggregatedTradeItem<'a> {
     pub buy_quantity: Option<u32>,
     pub sell_quantity: Option<u32>,
     pub buy_commission: Option<i128>,
+    pub total_commission: Option<i128>,
     pub sell_commission: Option<i128>,
     pub purchase_value: Option<i128>,
     pub sale_value: Option<i128>,
@@ -147,7 +176,7 @@ struct AggregatedTradeItem<'a> {
 }
 
 fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportError> {
-    //   println!("{}", df);
+    //         println!("{}", df);
 
     let combined_itr = _create_combined_trade_iterator(df)?;
 
@@ -183,6 +212,11 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 .sell_commission
                 .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("sell_commission".into()))?;
+
+            let total_commission = item
+                .total_commission
+                .map(Money::from_i128)
+                .ok_or(ReportError::MissingData("total_commission".into()))?;
 
             let purchase_value = item
                 .purchase_value
@@ -234,6 +268,7 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 sell_quantity,
                 buy_commission,
                 sell_commission,
+                total_commission,
                 purchase_value,
                 sale_value,
                 cost_basis,
@@ -260,6 +295,7 @@ fn _create_combined_trade_iterator<'a>(
 
     let buy_commission_iter = df.column("buy_commission")?.i128()?.into_iter();
     let sell_commission_iter = df.column("sell_commission")?.i128()?.into_iter();
+    let total_commission_iter = df.column("total_commission")?.i128()?.into_iter();
 
     let purchase_value_iter = df.column("purchase_value")?.i128()?.into_iter();
     let sale_value_iter = df.column("sale_value")?.i128()?.into_iter();
@@ -281,6 +317,7 @@ fn _create_combined_trade_iterator<'a>(
         sell_quantity_iter,
         buy_commission_iter,
         sell_commission_iter,
+        total_commission_iter,
         purchase_value_iter,
         sale_value_iter,
         cost_basis_iter,
@@ -299,6 +336,7 @@ fn _create_combined_trade_iterator<'a>(
             sell_quantity,
             buy_commission,
             sell_commission,
+            total_commission,
             purchase_value,
             sale_value,
             cost_basis,
@@ -316,6 +354,7 @@ fn _create_combined_trade_iterator<'a>(
                 sell_quantity,
                 buy_commission,
                 sell_commission,
+                total_commission,
                 purchase_value,
                 sale_value,
                 cost_basis,

@@ -1,10 +1,11 @@
 use crate::models::money::Money;
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use strum_macros::Display;
 //todo move to money.rs
 pub const DEFAULT_MONEY_SCALE: u32 = 2;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct TradeOrder {
     /// Symbol or identifier of a financial instrument (e.g. "AAPL", "EURUSD", "PLN=F").
     pub instrument_symbol: String,
@@ -16,7 +17,7 @@ pub struct TradeOrder {
     pub order_type: OrderType,
 
     /// Side of the order (Buy or Sell).
-    pub side: OrderSide,
+    pub order_side: OrderSide,
 
     /// Quantity that was ordered.
     pub quantity: u32,
@@ -46,13 +47,13 @@ pub struct TradeOrder {
 }
 
 /// Types of financial instruments.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, Serialize)]
 pub enum InstrumentType {
     Stock,
 }
 
 /// Stock order types.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, Serialize)]
 pub enum OrderType {
     Market,
     Limit,
@@ -61,18 +62,19 @@ pub enum OrderType {
 
 /// Side of the order (Buy or Sell).
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, Serialize)]
 pub enum OrderSide {
     Buy,
     Sell,
 }
 
 /// Status of the order.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, Serialize)]
 pub enum OrderStatus {
     Pending,
     PartiallyFilled,
     Filled,
+    Closed,
     Cancelled,
     Rejected,
     Expired,
