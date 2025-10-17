@@ -8,7 +8,7 @@ test-access = []
 
 [dependencies]
 shared_contracts = { path = "../../shared_contracts" }
-polars = { version = "0.50", features = ["lazy", "serde", "full","dtype-struct", "temporal"] }
+polars = { version = "0.51", features = ["lazy", "serde", "full","dtype-struct", "temporal"] }
 serde = { version = "1.0", features = ["derive"] }
 chrono = "0.4"
 rust_decimal = "1.38"
