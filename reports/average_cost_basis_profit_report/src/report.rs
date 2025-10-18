@@ -29,7 +29,7 @@ pub fn from_vec(trade_order: Vec<TradeOrder>) -> Result<ProfitReport, ReportErro
 }
 
 fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
-    let df: DataFrame = dataset
+    let df = dataset
         .clone()
         .lazy()
         .group_by([col("instrument_symbol")])
@@ -96,8 +96,7 @@ fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
                 )
                 .alias("net_profit")
         )])
-        .sort(["instrument_symbol"], Default::default())
-        .collect()?;
+        .sort(["instrument_symbol"], Default::default());
 
     let summary = df
         .clone()
@@ -118,7 +117,7 @@ fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
             tax_amount_total: _money(&summary, "total_tax_amount")?,
             net_profit_total: _money(&summary, "total_net_profit")?,
         },
-        instruments: _crete_instrument_report(&df)?,
+        instruments: _crete_instrument_report(&df.collect()?)?,
     };
 
     Ok(report)
@@ -129,7 +128,7 @@ fn _money(df: &DataFrame, column: &str) -> Result<Money, ReportError> {
         .column(column)?
         .i128()?
         .get(0)
-        .ok_or(ReportError::MissingData(format!(
+        .ok_or(ReportError::InvalidValue(format!(
             "missing column {column} in summary"
         )))?;
 
@@ -141,7 +140,7 @@ fn _trade_period(df: &DataFrame) -> Result<TradePeriod, ReportError> {
         .column("trade_period_start")?
         .i64()?
         .get(0)
-        .ok_or(ReportError::MissingData(
+        .ok_or(ReportError::InvalidValue(
             "summary: trade_period_start".into(),
         ))?;
 
@@ -149,7 +148,9 @@ fn _trade_period(df: &DataFrame) -> Result<TradePeriod, ReportError> {
         .column("trade_period_end")?
         .i64()?
         .get(0)
-        .ok_or(ReportError::MissingData("summary: trade_period_end".into()))?;
+        .ok_or(ReportError::InvalidValue(
+            "summary: trade_period_end".into(),
+        ))?;
 
     Ok(TradePeriod {
         start: DateTime::<Utc>::from_timestamp_nanos(start),
@@ -183,74 +184,35 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
         .map(|item| {
             let ticker = item
                 .ticker
-                .ok_or(ReportError::MissingData("ticker".into()))?
+                .ok_or(ReportError::InvalidValue("ticker".into()))?
                 .to_string();
 
-            let start = item
-                .trade_period_start
-                .ok_or(ReportError::MissingData("trade_period_start".into()))?;
+            let start = to_i64(item.trade_period_start, "trade_period_start")?;
 
-            let end = item
-                .trade_period_end
-                .ok_or(ReportError::MissingData("trade_period_end".into()))?;
+            let end = to_i64(item.trade_period_end, "trade_period_end")?;
 
-            let buy_quantity = item
-                .buy_quantity
-                .ok_or(ReportError::MissingData("buy_quantity".into()))?;
+            let buy_quantity = to_u32(item.buy_quantity, "buy_quantity")?;
 
-            let sell_quantity = item
-                .sell_quantity
-                .ok_or(ReportError::MissingData("sell_quantity".into()))?;
+            let sell_quantity = to_u32(item.sell_quantity, "sell_quantity")?;
 
-            let buy_commission = item
-                .buy_commission
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("buy_commission".into()))?;
+            let buy_commission = to_money(item.buy_commission, "buy_commission")?;
 
-            let sell_commission = item
-                .sell_commission
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("sell_commission".into()))?;
+            let sell_commission = to_money(item.sell_commission, "sell_commission")?;
 
-            let total_commission = item
-                .total_commission
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("total_commission".into()))?;
+            let total_commission = to_money(item.total_commission, "total_commission")?;
 
-            let purchase_value = item
-                .purchase_value
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("purchase_value".into()))?;
+            let purchase_value = to_money(item.purchase_value, "purchase_value")?;
 
-            let sale_value = item
-                .sale_value
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("sale_value".into()))?;
+            let sale_value = to_money(item.sale_value, "sale_value")?;
 
-            let cost_basis = item
-                .cost_basis
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("cost_basis".into()))?;
+            let cost_basis = to_money(item.cost_basis, "cost_basis")?;
 
-            let net_proceeds = item
-                .net_proceeds
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("net_proceeds".into()))?;
+            let net_proceeds = to_money(item.net_proceeds, "net_proceeds")?;
 
-            let average_cost_basis = item
-                .average_cost_basis
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("average_cost_basis".into()))?;
+            let average_cost_basis = to_money(item.average_cost_basis, "average_cost_basis")?;
 
-            let tax_amount = item
-                .tax_amount
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("tax_amount".into()))?;
-
-            let net_profit = item
-                .net_profit
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("net_profit".into()))?;
+            let tax_amount = to_money(item.tax_amount, "tax_amount")?;
+            let net_profit = to_money(item.net_profit, "net_profit")?;
 
             Ok(Instrument {
                 instrument_symbol: ticker,
@@ -274,6 +236,18 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
         })
         .collect();
     res
+}
+
+fn to_money(val: Option<i128>, field_name: &'static str) -> Result<Money, ReportError> {
+    val.map(Money::from_i128)
+        .ok_or(ReportError::InvalidValue(field_name.to_string()))
+}
+
+fn to_u32(val: Option<u32>, field_name: &'static str) -> Result<u32, ReportError> {
+    val.ok_or(ReportError::InvalidValue(field_name.to_string()))
+}
+fn to_i64(val: Option<i64>, field_name: &'static str) -> Result<i64, ReportError> {
+    val.ok_or(ReportError::InvalidValue(field_name.to_string()))
 }
 
 macro_rules! get_i128_iter {
