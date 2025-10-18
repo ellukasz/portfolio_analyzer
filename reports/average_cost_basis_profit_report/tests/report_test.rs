@@ -84,12 +84,6 @@ fn instruments_average_cost_basis() {
 }
 
 #[test]
-fn instruments_tax_base() {
-    let instruments = &_create_report().instruments[0];
-    assert_eq!(instruments.tax_base, Money::from_i128(2400));
-}
-
-#[test]
 fn instruments_tax_amount() {
     let instruments = &_create_report().instruments[0];
     assert_eq!(instruments.tax_amount, Money::from_i128(456));

@@ -170,7 +170,6 @@ struct AggregatedTradeItem<'a> {
     pub cost_basis: Option<i128>,
     pub net_proceeds: Option<i128>,
     pub average_cost_basis: Option<i128>,
-    pub tax_base: Option<i128>,
     pub tax_amount: Option<i128>,
     pub net_profit: Option<i128>,
 }
@@ -243,11 +242,6 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 .map(Money::from_i128)
                 .ok_or(ReportError::MissingData("average_cost_basis".into()))?;
 
-            let tax_base = item
-                .tax_base
-                .map(Money::from_i128)
-                .ok_or(ReportError::MissingData("tax_base".into()))?;
-
             let tax_amount = item
                 .tax_amount
                 .map(Money::from_i128)
@@ -274,7 +268,6 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 cost_basis,
                 net_proceeds,
                 average_cost_basis,
-                tax_base,
                 tax_amount,
                 net_profit,
             })
@@ -283,31 +276,53 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
     res
 }
 
+macro_rules! get_i128_iter {
+    ($df:expr, $name:expr ) => {
+        $df.column($name)?.i128()?.into_iter()
+    };
+}
+
+macro_rules! get_u32_iter {
+    ($df:expr, $name:expr ) => {
+        $df.column($name)?.u32()?.into_iter()
+    };
+}
+
+macro_rules! get_i64_iter {
+    ($df:expr, $name:expr ) => {
+        $df.column($name)?.i64()?.into_iter()
+    };
+}
+macro_rules! get_str_iter {
+    ($df:expr, $name:expr ) => {
+        $df.column($name)?.str()?.into_iter()
+    };
+}
+
 fn _create_combined_trade_iterator<'a>(
     df: &'a DataFrame,
 ) -> Result<impl Iterator<Item = AggregatedTradeItem<'a>> + 'a, ReportError> {
-    let ticker_iter = df.column("ticker")?.str()?.into_iter();
-    let start_iter = df.column("trade_period_start")?.i64()?.into_iter();
-    let end_iter = df.column("trade_period_end")?.i64()?.into_iter();
+    let ticker_iter = get_str_iter!(df, "ticker");
+    let start_iter = get_i64_iter!(df, "trade_period_start");
+    let end_iter = get_i64_iter!(df, "trade_period_end");
 
-    let buy_quantity_iter = df.column("buy_quantity")?.u32()?.into_iter();
-    let sell_quantity_iter = df.column("sell_quantity")?.u32()?.into_iter();
+    let buy_quantity_iter = get_u32_iter!(df, "buy_quantity");
+    let sell_quantity_iter = get_u32_iter!(df, "sell_quantity");
 
-    let buy_commission_iter = df.column("buy_commission")?.i128()?.into_iter();
-    let sell_commission_iter = df.column("sell_commission")?.i128()?.into_iter();
-    let total_commission_iter = df.column("total_commission")?.i128()?.into_iter();
+    let buy_commission_iter = get_i128_iter!(df, "buy_commission");
+    let sell_commission_iter = get_i128_iter!(df, "sell_commission");
+    let total_commission_iter = get_i128_iter!(df, "total_commission");
 
-    let purchase_value_iter = df.column("purchase_value")?.i128()?.into_iter();
-    let sale_value_iter = df.column("sale_value")?.i128()?.into_iter();
+    let purchase_value_iter = get_i128_iter!(df, "purchase_value");
+    let sale_value_iter = get_i128_iter!(df, "sale_value");
 
-    let cost_basis_iter = df.column("cost_basis")?.i128()?.into_iter();
-    let net_proceeds_iter = df.column("net_proceeds")?.i128()?.into_iter();
+    let cost_basis_iter = get_i128_iter!(df, "cost_basis");
+    let net_proceeds_iter = get_i128_iter!(df, "net_proceeds");
 
-    let average_cost_basis_iter = df.column("average_cost_basis")?.i128()?.into_iter();
+    let average_cost_basis_iter = get_i128_iter!(df, "average_cost_basis");
 
-    let tax_base_iter = df.column("tax_base")?.i128()?.into_iter();
-    let tax_amount_iter = df.column("tax_amount")?.i128()?.into_iter();
-    let net_profit_iter = df.column("net_profit")?.i128()?.into_iter();
+    let tax_amount_iter = get_i128_iter!(df, "tax_amount");
+    let net_profit_iter = get_i128_iter!(df, "net_profit");
 
     let combined_itr = izip!(
         ticker_iter,
@@ -323,7 +338,6 @@ fn _create_combined_trade_iterator<'a>(
         cost_basis_iter,
         net_proceeds_iter,
         average_cost_basis_iter,
-        tax_base_iter,
         tax_amount_iter,
         net_profit_iter
     )
@@ -342,7 +356,6 @@ fn _create_combined_trade_iterator<'a>(
             cost_basis,
             net_proceeds,
             average_cost_basis,
-            tax_base,
             tax_amount,
             net_profit,
         )| {
@@ -360,7 +373,6 @@ fn _create_combined_trade_iterator<'a>(
                 cost_basis,
                 net_proceeds,
                 average_cost_basis,
-                tax_base,
                 tax_amount,
                 net_profit,
             }

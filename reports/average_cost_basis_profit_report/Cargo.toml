@@ -3,6 +3,9 @@ name = "average_cost_basis_profit_report"
 version = "0.1.0"
 edition = "2024"
 
+[profile.dev.package."*"]
+opt-level = 3
+
 [features]
 test-access = []
 

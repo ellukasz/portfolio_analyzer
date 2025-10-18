@@ -22,4 +22,7 @@ pub enum ReportError {
     Error(String),
     #[error("Missing data: {0}")]
     MissingData(String),
+
+    #[error("Invalid value: {0}")]
+    InvalidValue(String),
 }

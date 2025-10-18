@@ -32,7 +32,6 @@ pub struct Instrument {
     pub cost_basis: Money,
     pub net_proceeds: Money,
     pub average_cost_basis: Money,
-    pub tax_base: Money,
     pub tax_amount: Money,
     pub net_profit: Money,
 }
