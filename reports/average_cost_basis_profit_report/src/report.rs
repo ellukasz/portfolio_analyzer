@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::data_frame_factory;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use itertools::izip;
 use polars::prelude::*;
 use shared_contracts::models::report::{Instrument, ProfitReport, Summary, TradePeriod};
@@ -32,6 +32,11 @@ fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
     let df = dataset
         .clone()
         .lazy()
+        .filter(
+            col("status")
+                .eq(lit("Filled"))
+                .or(col("status").eq(lit("PartiallyFilled"))),
+        )
         .group_by([col("instrument_symbol")])
         .agg([
             col("instrument_symbol").first().alias("ticker"),
@@ -109,7 +114,7 @@ fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
             col("net_profit").sum().alias("total_net_profit"),
         ])
         .collect()?;
-
+    let instruments = _crete_instrument_report(&df.clone().collect()?)?;
     let report = ProfitReport {
         summary: Summary {
             trade_period: _trade_period(&summary)?,
@@ -117,7 +122,7 @@ fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
             tax_amount_total: _money(&summary, "total_tax_amount")?,
             net_profit_total: _money(&summary, "total_net_profit")?,
         },
-        instruments: _crete_instrument_report(&df.collect()?)?,
+        instruments,
     };
 
     Ok(report)
@@ -126,18 +131,20 @@ fn create(dataset: DataFrame) -> Result<ProfitReport, ReportError> {
 fn _money(df: &DataFrame, column: &str) -> Result<Money, ReportError> {
     let val = df
         .column(column)?
-        .i128()?
+        .f64()?
         .get(0)
         .ok_or(ReportError::InvalidValue(format!(
             "missing column {column} in summary"
         )))?;
-
-    Ok(Money::from_i128(val))
+    Ok(Money::from_f64(val))
 }
 
 fn _trade_period(df: &DataFrame) -> Result<TradePeriod, ReportError> {
     let start = df
         .column("trade_period_start")?
+        .datetime()?
+        .cast_time_unit(TimeUnit::Nanoseconds)
+        .cast(&DataType::Int64)?
         .i64()?
         .get(0)
         .ok_or(ReportError::InvalidValue(
@@ -146,6 +153,9 @@ fn _trade_period(df: &DataFrame) -> Result<TradePeriod, ReportError> {
 
     let end = df
         .column("trade_period_end")?
+        .datetime()?
+        .cast_time_unit(TimeUnit::Nanoseconds)
+        .cast(&DataType::Int64)?
         .i64()?
         .get(0)
         .ok_or(ReportError::InvalidValue(
@@ -157,27 +167,26 @@ fn _trade_period(df: &DataFrame) -> Result<TradePeriod, ReportError> {
         end: DateTime::<Utc>::from_timestamp_nanos(end),
     })
 }
+
 struct AggregatedTradeItem<'a> {
     pub ticker: Option<&'a str>,
-    pub trade_period_start: Option<i64>,
-    pub trade_period_end: Option<i64>,
-    pub buy_quantity: Option<u32>,
-    pub sell_quantity: Option<u32>,
-    pub buy_commission: Option<i128>,
-    pub total_commission: Option<i128>,
-    pub sell_commission: Option<i128>,
-    pub purchase_value: Option<i128>,
-    pub sale_value: Option<i128>,
-    pub cost_basis: Option<i128>,
-    pub net_proceeds: Option<i128>,
-    pub average_cost_basis: Option<i128>,
-    pub tax_amount: Option<i128>,
-    pub net_profit: Option<i128>,
+    pub trade_period_start: Option<NaiveDateTime>,
+    pub trade_period_end: Option<NaiveDateTime>,
+    pub buy_quantity: Option<i64>,
+    pub sell_quantity: Option<i64>,
+    pub buy_commission: Option<f64>,
+    pub total_commission: Option<f64>,
+    pub sell_commission: Option<f64>,
+    pub purchase_value: Option<f64>,
+    pub sale_value: Option<f64>,
+    pub cost_basis: Option<f64>,
+    pub net_proceeds: Option<f64>,
+    pub average_cost_basis: Option<f64>,
+    pub tax_amount: Option<f64>,
+    pub net_profit: Option<f64>,
 }
 
 fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportError> {
-    //         println!("{}", df);
-
     let combined_itr = _create_combined_trade_iterator(df)?;
 
     let res: Result<Vec<Instrument>, ReportError> = combined_itr
@@ -187,13 +196,13 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
                 .ok_or(ReportError::InvalidValue("ticker".into()))?
                 .to_string();
 
-            let start = to_i64(item.trade_period_start, "trade_period_start")?;
+            let start = to_datetime(item.trade_period_start, "trade_period_start")?;
 
-            let end = to_i64(item.trade_period_end, "trade_period_end")?;
+            let end = to_datetime(item.trade_period_end, "trade_period_end")?;
 
-            let buy_quantity = to_u32(item.buy_quantity, "buy_quantity")?;
+            let buy_quantity = to_i64(item.buy_quantity, "buy_quantity")?;
 
-            let sell_quantity = to_u32(item.sell_quantity, "sell_quantity")?;
+            let sell_quantity = to_i64(item.sell_quantity, "sell_quantity")?;
 
             let buy_commission = to_money(item.buy_commission, "buy_commission")?;
 
@@ -216,10 +225,7 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
 
             Ok(Instrument {
                 instrument_symbol: ticker,
-                trade_period: TradePeriod {
-                    start: DateTime::<Utc>::from_timestamp_nanos(start),
-                    end: DateTime::<Utc>::from_timestamp_nanos(end),
-                },
+                trade_period: TradePeriod { start, end },
                 buy_quantity,
                 sell_quantity,
                 buy_commission,
@@ -238,33 +244,38 @@ fn _crete_instrument_report(df: &DataFrame) -> Result<Vec<Instrument>, ReportErr
     res
 }
 
-fn to_money(val: Option<i128>, field_name: &'static str) -> Result<Money, ReportError> {
-    val.map(Money::from_i128)
+fn to_money(val: Option<f64>, field_name: &'static str) -> Result<Money, ReportError> {
+    val.map(Money::from_f64)
         .ok_or(ReportError::InvalidValue(field_name.to_string()))
 }
 
-fn to_u32(val: Option<u32>, field_name: &'static str) -> Result<u32, ReportError> {
-    val.ok_or(ReportError::InvalidValue(field_name.to_string()))
-}
 fn to_i64(val: Option<i64>, field_name: &'static str) -> Result<i64, ReportError> {
     val.ok_or(ReportError::InvalidValue(field_name.to_string()))
 }
 
-macro_rules! get_i128_iter {
-    ($df:expr, $name:expr ) => {
-        $df.column($name)?.i128()?.into_iter()
-    };
+fn to_datetime(
+    val: Option<NaiveDateTime>,
+    field_name: &'static str,
+) -> Result<DateTime<Utc>, ReportError> {
+    val.map(|d| d.and_utc())
+        .ok_or(ReportError::InvalidValue(field_name.to_string()))
 }
 
-macro_rules! get_u32_iter {
+macro_rules! get_f64_iter {
     ($df:expr, $name:expr ) => {
-        $df.column($name)?.u32()?.into_iter()
+        $df.column($name)?.f64()?.into_iter()
     };
 }
 
 macro_rules! get_i64_iter {
     ($df:expr, $name:expr ) => {
         $df.column($name)?.i64()?.into_iter()
+    };
+}
+
+macro_rules! get_datetime_iter {
+    ($df:expr, $name:expr ) => {
+        $df.column($name)?.datetime()?.as_datetime_iter()
     };
 }
 macro_rules! get_str_iter {
@@ -277,26 +288,27 @@ fn _create_combined_trade_iterator<'a>(
     df: &'a DataFrame,
 ) -> Result<impl Iterator<Item = AggregatedTradeItem<'a>> + 'a, ReportError> {
     let ticker_iter = get_str_iter!(df, "ticker");
-    let start_iter = get_i64_iter!(df, "trade_period_start");
-    let end_iter = get_i64_iter!(df, "trade_period_end");
 
-    let buy_quantity_iter = get_u32_iter!(df, "buy_quantity");
-    let sell_quantity_iter = get_u32_iter!(df, "sell_quantity");
+    let start_iter = get_datetime_iter!(df, "trade_period_start");
+    let end_iter = get_datetime_iter!(df, "trade_period_end");
 
-    let buy_commission_iter = get_i128_iter!(df, "buy_commission");
-    let sell_commission_iter = get_i128_iter!(df, "sell_commission");
-    let total_commission_iter = get_i128_iter!(df, "total_commission");
+    let buy_quantity_iter = get_i64_iter!(df, "buy_quantity");
+    let sell_quantity_iter = get_i64_iter!(df, "sell_quantity");
 
-    let purchase_value_iter = get_i128_iter!(df, "purchase_value");
-    let sale_value_iter = get_i128_iter!(df, "sale_value");
+    let buy_commission_iter = get_f64_iter!(df, "buy_commission");
+    let sell_commission_iter = get_f64_iter!(df, "sell_commission");
+    let total_commission_iter = get_f64_iter!(df, "total_commission");
 
-    let cost_basis_iter = get_i128_iter!(df, "cost_basis");
-    let net_proceeds_iter = get_i128_iter!(df, "net_proceeds");
+    let purchase_value_iter = get_f64_iter!(df, "purchase_value");
+    let sale_value_iter = get_f64_iter!(df, "sale_value");
 
-    let average_cost_basis_iter = get_i128_iter!(df, "average_cost_basis");
+    let cost_basis_iter = get_f64_iter!(df, "cost_basis");
+    let net_proceeds_iter = get_f64_iter!(df, "net_proceeds");
 
-    let tax_amount_iter = get_i128_iter!(df, "tax_amount");
-    let net_profit_iter = get_i128_iter!(df, "net_profit");
+    let average_cost_basis_iter = get_f64_iter!(df, "average_cost_basis");
+
+    let tax_amount_iter = get_f64_iter!(df, "tax_amount");
+    let net_profit_iter = get_f64_iter!(df, "net_profit");
 
     let combined_itr = izip!(
         ticker_iter,

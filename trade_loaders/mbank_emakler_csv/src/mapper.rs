@@ -15,8 +15,8 @@ pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
         instrument_type: InstrumentType::Stock,
         order_type: _map_order_type(&record)?,
         order_side: _map_side(&record.side)?,
-        quantity: _map_u32(&record.quantity, "quantity")?,
-        filled_quantity: _map_u32(&record.filled_quantity, "filled_quantity")?,
+        quantity: _map_i64(&record.quantity, "quantity")?,
+        filled_quantity: _map_i64(&record.filled_quantity, "filled_quantity")?,
         price: _map_price(&record)?,
         commission: _map_commission(&record)?,
         status: _map_status(&record.status)?,
@@ -26,8 +26,8 @@ pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
     };
     Ok(order)
 }
-fn _map_u32(value: &str, field_name: &str) -> Result<u32, TradeLoaderError> {
-    value.trim().parse::<u32>().map_err(|e| {
+fn _map_i64(value: &str, field_name: &str) -> Result<i64, TradeLoaderError> {
+    value.trim().parse::<i64>().map_err(|e| {
         TradeLoaderError::Parse(format!("Invalid {field_name:?} value {value:?}: {e}"))
     })
 }

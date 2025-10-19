@@ -1,4 +1,5 @@
-use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::{Decimal, prelude::FromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -11,6 +12,10 @@ pub struct Money(pub Decimal);
 impl Money {
     pub fn zero() -> Self {
         Money(Decimal::new(0, DEFAULT_MONEY_SCALE))
+    }
+    pub fn from_f64(value: f64) -> Self {
+        let val = Decimal::from_f64(value).expect("invalid f64");
+        Money(val)
     }
 
     pub fn from_i128(value: i128) -> Self {
@@ -34,6 +39,7 @@ impl Money {
     pub fn from_decimal(value: Decimal) -> Self {
         let mut v = value;
         v.rescale(DEFAULT_MONEY_SCALE);
+
         Money(v)
     }
 
@@ -41,8 +47,8 @@ impl Money {
         self.0
     }
 
-    pub fn as_i128(&self) -> i128 {
-        self.0.mantissa()
+    pub fn as_f64(&self) -> f64 {
+        self.0.to_f64().expect("cannot convert to f64")
     }
 
     pub fn as_string(&self) -> String {

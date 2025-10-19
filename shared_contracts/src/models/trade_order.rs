@@ -20,10 +20,10 @@ pub struct TradeOrder {
     pub order_side: OrderSide,
 
     /// Quantity that was ordered.
-    pub quantity: u32,
+    pub quantity: i64,
 
     /// Quantity of the instrument that has been filled/executed.
-    pub filled_quantity: u32,
+    pub filled_quantity: i64,
 
     /// Price of the order. Optional, as Market orders do not have a specified price.
     /// scale default to 2

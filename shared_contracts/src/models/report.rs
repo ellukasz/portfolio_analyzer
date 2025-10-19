@@ -22,8 +22,8 @@ pub struct Summary {
 pub struct Instrument {
     pub instrument_symbol: String,
     pub trade_period: TradePeriod,
-    pub buy_quantity: u32,
-    pub sell_quantity: u32,
+    pub buy_quantity: i64,
+    pub sell_quantity: i64,
     pub buy_commission: Money,
     pub sell_commission: Money,
     pub total_commission: Money,

@@ -22,17 +22,17 @@ struct Vectors {
     instruments: Vec<String>,
     submission_times: Vec<i64>,
     order_sides: Vec<String>,
-    filed_quenties: Vec<u32>,
-    prices: Vec<i128>,
-    commissions: Vec<i128>,
+    filed_quenties: Vec<i64>,
+    prices: Vec<f64>,
+    commissions: Vec<f64>,
 }
 
 fn _convert_to_vectors(trade_orders: Vec<TradeOrder>) -> Result<Vectors, ReportError> {
     let mut submission_times: Vec<i64> = Vec::with_capacity(trade_orders.len());
     let mut order_sides: Vec<String> = Vec::with_capacity(trade_orders.len());
-    let mut filed_quenties: Vec<u32> = Vec::with_capacity(trade_orders.len());
-    let mut prices: Vec<i128> = Vec::with_capacity(trade_orders.len());
-    let mut commissions: Vec<i128> = Vec::with_capacity(trade_orders.len());
+    let mut filed_quenties: Vec<i64> = Vec::with_capacity(trade_orders.len());
+    let mut prices: Vec<f64> = Vec::with_capacity(trade_orders.len());
+    let mut commissions: Vec<f64> = Vec::with_capacity(trade_orders.len());
     let mut instruments: Vec<String> = Vec::with_capacity(trade_orders.len());
 
     for order in trade_orders.iter() {
@@ -52,8 +52,8 @@ fn _convert_to_vectors(trade_orders: Vec<TradeOrder>) -> Result<Vectors, ReportE
         order_sides.push(order.order_side.to_string());
         filed_quenties.push(order.filled_quantity);
 
-        prices.push(order.price.map_or(0_i128, |p| p.as_i128()));
-        commissions.push(order.commission.as_i128());
+        prices.push(order.price.map_or(0_f64, |p| p.as_f64()));
+        commissions.push(order.commission.as_f64());
     }
 
     let res = Vectors {
