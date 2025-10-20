@@ -1,17 +1,12 @@
 [package]
-name = "average_cost_basis_profit_report"
+name = "upside"
 version = "0.1.0"
 edition = "2024"
 
-[profile.dev.package."*"]
-opt-level = 3
-
-[features]
-test-access = []
-
 [dependencies]
-shared_contracts = { path = "../../shared_contracts" }
 polars = { version = "0.51", features = ["lazy", "serde", "full","dtype-struct", "temporal","csv"] }
 serde = { version = "1.0", features = ["derive"] }
 chrono = "0.4"
 rust_decimal = { version = "1.38", features = ["serde-with-float","std"] }
+shared_contracts = { path = "../../shared_contracts" }
+gpw= { path ="../../stock_data/gpw"}

@@ -1,21 +1,23 @@
 use polars::prelude::PolarsError;
-use rust_decimal::Error as DecimalError;
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
-pub enum TradeLoaderError {
-    #[error("Load error: {0}")]
-    Load(String),
-    #[error("Parse error: {0}")]
-    Parse(String),
-    #[error("Money conversion error: {0}")]
-    MoneyConversion(#[from] DecimalError),
-}
-
 #[derive(Debug, Error)]
-pub enum ReportError {
-    #[error("Can't create report, error: {0}")]
+pub enum PortfolioError {
+    #[error("{0}")]
     CalculationError(#[from] PolarsError),
+
+    #[error("{0}")]
+    IO(#[from] std::io::Error),
+
+    #[error("{0}")]
+    Csv(#[from] csv::Error),
+
+    #[error("{0}")]
+    Xls(String),
+
+    #[error("{0}")]
+    Decimal(#[from] rust_decimal::Error),
+
     #[error("Input error: {0}")]
     InputError(String),
     #[error("General error: {0}")]

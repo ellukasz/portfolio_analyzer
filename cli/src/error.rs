@@ -1,21 +1,14 @@
-use shared_contracts::errors::{ReportError, TradeLoaderError};
+use shared_contracts::errors::PortfolioError;
 use std::fmt;
 use std::io;
 #[derive(Debug)]
 pub enum CliError {
-    Load(TradeLoaderError),
-    Process(ReportError),
+    Process(PortfolioError),
     Io(String),
 }
 
-impl From<TradeLoaderError> for CliError {
-    fn from(e: TradeLoaderError) -> Self {
-        CliError::Load(e)
-    }
-}
-
-impl From<ReportError> for CliError {
-    fn from(e: ReportError) -> Self {
+impl From<PortfolioError> for CliError {
+    fn from(e: PortfolioError) -> Self {
         CliError::Process(e)
     }
 }
@@ -28,7 +21,6 @@ impl From<io::Error> for CliError {
 impl fmt::Display for CliError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CliError::Load(e) => write!(f, "Trade Loading Error: {e}"),
             CliError::Process(e) => write!(f, "Report Processing Error: {e}"),
             CliError::Io(msg) => write!(f, "Data Saving Error: {msg}"),
         }

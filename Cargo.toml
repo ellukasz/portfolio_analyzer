@@ -4,7 +4,7 @@ members = [
     "shared_contracts",
     "trade_loaders/mbank_emakler_csv",
     "reports/average_cost_basis_profit_report",
-    "cli", "csv_util",
+    "cli",  "stock_data/gpw", "predictions/upside",
 ]
 
 resolver = "3"

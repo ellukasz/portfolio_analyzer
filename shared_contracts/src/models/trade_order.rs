@@ -8,7 +8,7 @@ pub const DEFAULT_MONEY_SCALE: u32 = 2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct TradeOrder {
     /// Symbol or identifier of a financial instrument (e.g. "AAPL", "EURUSD", "PLN=F").
-    pub instrument_symbol: String,
+    pub instrument: String,
 
     /// Type of financial instrument (e.g. Stock, CurrencyPair, Future, Bond).
     pub instrument_type: InstrumentType,

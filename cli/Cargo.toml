@@ -10,6 +10,7 @@ csv = { version = "1.3" }
 thiserror = "2.0"
 shared_contracts = { path = "../shared_contracts" }
 mbank_emakler_csv= { path ="../trade_loaders/mbank_emakler_csv"}
-csv_util = { path ="../csv_util"}
 average_cost_basis_profit_report= { path ="../reports/average_cost_basis_profit_report"}
+upside= { path ="../predictions/upside"}
+
 fmt = "0.1.0"

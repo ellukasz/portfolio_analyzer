@@ -2,16 +2,16 @@ use super::model::Csv;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Europe::Warsaw;
 use rust_decimal::Decimal;
-use shared_contracts::errors::TradeLoaderError;
+use shared_contracts::errors::PortfolioError;
 use shared_contracts::models::money::Money;
 use shared_contracts::models::trade_order::{
     InstrumentType, OrderSide, OrderStatus, OrderType, TradeOrder,
 };
 use std::str::FromStr;
 
-pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
+pub(super) fn map(record: Csv) -> Result<TradeOrder, PortfolioError> {
     let order = TradeOrder {
-        instrument_symbol: record.instrument_symbol.clone(),
+        instrument: record.instrument_symbol.clone(),
         instrument_type: InstrumentType::Stock,
         order_type: _map_order_type(&record)?,
         order_side: _map_side(&record.side)?,
@@ -26,62 +26,63 @@ pub(super) fn map(record: Csv) -> Result<TradeOrder, TradeLoaderError> {
     };
     Ok(order)
 }
-fn _map_i64(value: &str, field_name: &str) -> Result<i64, TradeLoaderError> {
-    value.trim().parse::<i64>().map_err(|e| {
-        TradeLoaderError::Parse(format!("Invalid {field_name:?} value {value:?}: {e}"))
-    })
+fn _map_i64(value: &str, field_name: &str) -> Result<i64, PortfolioError> {
+    value
+        .trim()
+        .parse::<i64>()
+        .map_err(|e| PortfolioError::Error(format!("Invalid {field_name:?} value {value:?}: {e}")))
 }
-fn _map_status(status: &str) -> Result<OrderStatus, TradeLoaderError> {
+fn _map_status(status: &str) -> Result<OrderStatus, PortfolioError> {
     match status.trim().to_lowercase().as_str() {
         "przyjęte" => Ok(OrderStatus::Pending),
         "zamknięte" => Ok(OrderStatus::Closed),
         "zrealizowane" => Ok(OrderStatus::Filled),
         "anulowane" => Ok(OrderStatus::Cancelled),
         "odrzucone" => Ok(OrderStatus::Rejected),
-        _ => Err(TradeLoaderError::Parse(format!(
+        _ => Err(PortfolioError::Error(format!(
             "Unknown order status: {status:?}"
         ))),
     }
 }
 
-fn _map_warsaw_time_to_utc(date_raw: &str) -> Result<DateTime<Utc>, TradeLoaderError> {
+fn _map_warsaw_time_to_utc(date_raw: &str) -> Result<DateTime<Utc>, PortfolioError> {
     let date = NaiveDateTime::parse_from_str(date_raw, "%d.%m.%Y %H:%M:%S")
-        .map_err(|e| TradeLoaderError::Parse(format!("Invalid date {date_raw:?}: {e}")))?;
+        .map_err(|e| PortfolioError::Error(format!("Invalid date {date_raw:?}: {e}")))?;
 
     match Warsaw.from_local_datetime(&date) {
         chrono::offset::LocalResult::Single(dt) => Ok(dt.with_timezone(&Utc)),
-        chrono::offset::LocalResult::Ambiguous(_dt1, _dt2) => Err(TradeLoaderError::Parse(
+        chrono::offset::LocalResult::Ambiguous(_dt1, _dt2) => Err(PortfolioError::Error(
             format!("Unknown date time: {date:?}").to_string(),
         )),
-        chrono::offset::LocalResult::None => Err(TradeLoaderError::Parse(
+        chrono::offset::LocalResult::None => Err(PortfolioError::Error(
             format!("Unknown date time: {date:?}").to_string(),
         )),
     }
 }
 
-fn _map_side(side: &str) -> Result<OrderSide, TradeLoaderError> {
+fn _map_side(side: &str) -> Result<OrderSide, PortfolioError> {
     match side.trim().to_uppercase().as_str() {
         "K" => Ok(OrderSide::Buy),
         "S" => Ok(OrderSide::Sell),
-        _ => Err(TradeLoaderError::Parse(
+        _ => Err(PortfolioError::Error(
             format!("Unknown order side, side:{side:?}").to_string(),
         )),
     }
 }
 
-fn _map_order_type(record: &Csv) -> Result<OrderType, TradeLoaderError> {
+fn _map_order_type(record: &Csv) -> Result<OrderType, PortfolioError> {
     if !record.activation_limit.is_empty() {
         Ok(OrderType::StopLimit)
     } else if !record.price_limit.is_empty() {
         Ok(OrderType::Limit)
     } else {
-        Err(TradeLoaderError::Parse(
+        Err(PortfolioError::Error(
             format!("Unknown order type, record:{record:?}").to_string(),
         ))
     }
 }
 
-fn _map_price(record: &Csv) -> Result<Option<Money>, TradeLoaderError> {
+fn _map_price(record: &Csv) -> Result<Option<Money>, PortfolioError> {
     if record.price_limit.is_empty() {
         return Ok(None);
     }
@@ -90,11 +91,11 @@ fn _map_price(record: &Csv) -> Result<Option<Money>, TradeLoaderError> {
     Ok(Some(price))
 }
 
-fn _map_commission(record: &Csv) -> Result<Money, TradeLoaderError> {
+fn _map_commission(record: &Csv) -> Result<Money, PortfolioError> {
     let filled_quantity_raw = &record.filled_quantity;
     let fulfilled_quantity: Decimal =
         Decimal::from_str_exact(filled_quantity_raw).map_err(|e| {
-            TradeLoaderError::Parse(format!(
+            PortfolioError::Error(format!(
                 "Invalid filled_quantity value {filled_quantity_raw:?}: {e}"
             ))
         })?;

@@ -1,9 +1,0 @@
-[package]
-name = "csv_util"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-shared_contracts = { path = "../shared_contracts" }
-comfy-table="7.2"
-csv = "1.3"

@@ -1,22 +1,23 @@
+use crate::error::CliError;
 use std::path::{Path, PathBuf};
 
-use shared_contracts::models::report::ProfitReport;
+pub fn handle(csv: &Path) -> Result<(), CliError> {
+    let normalized_orders_csv = tmp_path(csv, "normalized")?;
 
-use crate::error::CliError;
-
-pub fn handle(csv: &Path) -> Result<ProfitReport, CliError> {
-    let normalized_csv = tmp_path(csv, "normalized")?;
-    normalized_csv
+    normalized_orders_csv
         .exists()
-        .then(|| std::fs::remove_file(&normalized_csv));
+        .then(|| std::fs::remove_file(&normalized_orders_csv));
 
-    let orders = mbank_emakler_csv::loader::load(csv)?;
+    mbank_emakler_csv::loader::normalize(csv, normalized_orders_csv.as_path())?;
 
-    csv_util::csv::save(&normalized_csv, orders.clone())
-        .map_err(|e| CliError::Io(format!("Failed to save normalized CSV: {e}")))?;
+    let portfolio_csv = tmp_path(csv, "portfolio")?;
 
-    let report = average_cost_basis_profit_report::report::from_csv(normalized_csv.as_path())?;
-    Ok(report)
+    average_cost_basis_profit_report::report::calculate_and_save(
+        normalized_orders_csv.as_path(),
+        portfolio_csv.as_path(),
+    )?;
+
+    Ok(())
 }
 
 fn tmp_path(trade_orders_file: &Path, suffix: &str) -> Result<PathBuf, CliError> {

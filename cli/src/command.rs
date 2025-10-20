@@ -9,9 +9,5 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    MbankTradeReportCsv {
-        trade_orders_file: String,
-        #[arg(default_value_t = String::from("pretty"))]
-        output_type: String,
-    },
+    MbankTradeReportCsv { trade_orders_file: String },
 }
