@@ -68,6 +68,9 @@ fn save_metadata(output: &mut File, summary_df: LazyFrame) -> Result<(), Portfol
     Ok(())
 }
 fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), PortfolioError> {
+    let round = 2;
+    let mode = RoundMode::HalfToEven;
+
     let df = dataset
         .clone()
         .lazy()
@@ -92,29 +95,33 @@ fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), Portf
                 .alias("sell_quantity"),
             when(col("order_side").eq(lit(OrderSide::Buy.to_string())))
                 .then(col("commission"))
-                .otherwise(lit(0_i128))
+                .otherwise(lit(0_f64))
                 .sum()
+                .round(round, mode)
                 .alias("buy_commission"),
             when(col("order_side").eq(lit(OrderSide::Sell.to_string())))
                 .then(col("commission"))
-                .otherwise(lit(0_i128))
+                .otherwise(lit(0_f64))
                 .sum()
+                .round(round, mode)
                 .alias("sell_commission"),
             when(col("order_side").eq(lit(OrderSide::Buy.to_string())))
                 .then(col("price") * col("filled_quantity"))
-                .otherwise(lit(0_i128))
+                .otherwise(lit(0_f64))
                 .sum()
+                .round(round, mode)
                 .alias("purchase_value"),
             when(col("order_side").eq(lit(OrderSide::Sell.to_string())))
                 .then(col("price") * col("filled_quantity"))
-                .otherwise(lit(0_i128))
+                .otherwise(lit(0_f64))
                 .sum()
+                .round(round, mode)
                 .alias("sale_value"),
         ])
         // Obliczenia bazowe
         .with_columns([
             (col("buy_commission") + col("sell_commission"))
-                .round(2, RoundMode::HalfToEven)
+                .round(round, mode)
                 .alias("total_commission"),
             (col("purchase_value") + col("buy_commission")).alias("cost_basis"),
             (col("sale_value") - col("sell_commission")).alias("net_proceeds"),
@@ -125,14 +132,17 @@ fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), Portf
             .total_days()
             .alias("days_to_settle")])
         // Średnia cena zakupu
-        .with_columns([(col("cost_basis") / col("buy_quantity")).alias("average_cost_basis")])
+        .with_columns([(col("cost_basis") / col("buy_quantity"))
+            .round(round, mode)
+            .alias("average_cost_basis")])
         //  Oblicza podatek tylko od sprzedanej ilości, używając średniej ceny
         .with_columns([
             (col("net_proceeds") - (col("average_cost_basis") * col("sell_quantity")))
+                .round(round, mode)
                 .alias("tax_base"),
         ])
         .with_columns([(col("tax_base") * lit(0.19))
-            .round(2, RoundMode::HalfToEven)
+            .round(round, mode)
             .alias("tax_amount")])
         // Zysk netto
         .with_columns([(
@@ -146,7 +156,7 @@ fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), Portf
                     // W przeciwnym razie ustaw 0 (transakcja nierozliczona)
                     lit(0_i128),
                 )
-                .round(2, RoundMode::HalfToEven)
+                .round(round, mode)
                 .alias("net_profit")
         )])
         .sort(["instrument"], Default::default());
