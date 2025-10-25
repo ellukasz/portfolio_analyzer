@@ -5,8 +5,12 @@ use std::path::Path;
 
 pub fn convert_xls_to_csv(market_data_file: &Path, output: &Path) -> Result<(), PortfolioError> {
     let records = read_xls(market_data_file)?;
+    write_to_csv(records, output)?;
+    Ok(())
+}
 
-    let mut wtr = csv::Writer::from_path(output)?;
+fn write_to_csv(records: Vec<MarketDataRecord>, output: &Path) -> Result<(), PortfolioError> {
+    let mut wtr = util::csv::default_writer(output)?;
 
     for record in records {
         wtr.serialize(record)?;
@@ -53,48 +57,54 @@ fn read_xls(stocks_data_file: &Path) -> Result<Vec<MarketDataRecord>, PortfolioE
 
 #[derive(Debug, Serialize, Deserialize)]
 struct MarketDataRecord {
-    #[serde(rename = "date")]
+    #[serde(alias = "Data", rename = "date")]
     pub date: String,
 
-    #[serde(rename = "instrument")]
+    #[serde(alias = "Nazwa", rename = "instrument")]
     pub name: String,
 
-    #[serde(rename = "isin")]
+    #[allow(dead_code)]
+    #[serde(alias = "ISIN", skip_serializing)]
     pub isin: String,
 
-    #[serde(rename = "currency")]
+    #[allow(dead_code)]
+    #[serde(alias = "Waluta", skip_serializing)]
     pub currency: String,
 
-    #[serde(rename = "opening_price")]
+    #[serde(alias = "Kurs otwarcia", rename = "opening_price")]
     pub open_price: f64,
 
-    #[serde(rename = "max_price")]
+    #[serde(alias = "Kurs max", rename = "max_price")]
     pub high_price: f64,
 
-    #[serde(rename = "min_price")]
+    #[serde(alias = "Kurs min", rename = "min_price")]
     pub low_price: f64,
 
-    #[serde(rename = "closing_price")]
+    #[serde(alias = "Kurs zamknięcia", rename = "closing_price")]
     pub close_price: f64,
 
-    #[serde(rename = "change")]
+    #[allow(dead_code)]
+    #[serde(alias = "Zmiana", skip_serializing)]
     pub change: f64,
 
-    #[serde(rename = "volumen")]
+    #[serde(alias = "Wolumen", rename = "volume")]
     pub volume: i64,
 
-    #[serde(rename = "transactions_number")]
+    #[serde(alias = "Liczba Transakcji", rename = "transaction_number")]
     pub num_transactions: i64,
 
-    #[serde(rename = "trading_volume")]
+    #[allow(dead_code)]
+    #[serde(alias = "Obrót", skip_serializing)]
     pub turnover: f64,
 
-    #[serde(rename = "open_positions_count")]
+    #[serde(alias = "Liczba otwartych pozycji", rename = "open_position_number")]
     pub open_positions_count: i64,
 
-    #[serde(rename = "open_positions_value")]
+    #[allow(dead_code)]
+    #[serde(alias = "Wartość otwartych pozycji", skip_serializing)]
     pub open_positions_value: f64,
 
-    #[serde(rename = "par_value")]
+    #[allow(dead_code)]
+    #[serde(alias = "Cena nominalna", skip_serializing)]
     pub nominal_price: f64,
 }

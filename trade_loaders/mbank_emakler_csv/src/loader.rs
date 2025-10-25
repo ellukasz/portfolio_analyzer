@@ -10,7 +10,7 @@ use std::path::Path;
 pub fn normalize(input: &Path, output: &Path) -> Result<(), PortfolioError> {
     let records = load(input)?;
 
-    let mut wtr = csv::Writer::from_path(output)?;
+    let mut wtr = util::csv::default_writer(output)?;
 
     for record in records {
         wtr.serialize(record)?;

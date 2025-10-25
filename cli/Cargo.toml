@@ -12,5 +12,6 @@ shared_contracts = { path = "../shared_contracts" }
 mbank_emakler_csv= { path ="../trade_loaders/mbank_emakler_csv"}
 average_cost_basis_profit_report= { path ="../reports/average_cost_basis_profit_report"}
 upside= { path ="../predictions/upside"}
-
+util = { path = "../util" }
+gpw=  {path="../stock_data/gpw"}
 fmt = "0.1.0"

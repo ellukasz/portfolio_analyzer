@@ -1,0 +1,11 @@
+Valculates the number of shares you can buy based on your available investment capital and the price per share:
+quantity = amount to investment/current stock price
+
+Calculates the estimated net profit based on the number of shares you own and the potential gain per share
+net profit = quantity * upside
+
+
+CSV Format:
+instrument;upside;created_by;created_at
+ORANGEPL;10.80;mbank;2025-04-24
+ORANGEPL;10.01;konse;2025-04-23

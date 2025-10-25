@@ -1,0 +1,4 @@
+Convert internal portfolio data to csv
+
+instrument;instrument_type;order_type;order_side;quantity;filled_quantity;price;commission;status;submission_time;currency;exchange
+ORANGEPL;Stock;Limit;Buy;10;0;8.15;5.00;Pending;2025-10-14T13:07:19Z;PLN;WWA-GPW

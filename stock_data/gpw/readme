@@ -1,0 +1,5 @@
+Convert  market data in any format to csv
+
+CSV format:
+market_data_downloaded_at;instrument;opening_price;max_price;min_price;closing_price;volume;transaction_number
+2025-10-17;ORANGEPL;8.802;9.02;8.74;8.974;701712;2298

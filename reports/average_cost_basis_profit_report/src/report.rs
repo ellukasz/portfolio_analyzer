@@ -11,11 +11,7 @@ use shared_contracts::{
 use std::io::Write;
 
 pub fn calculate_and_save(input: &Path, output: &Path) -> Result<(), PortfolioError> {
-    let df_csv = CsvReadOptions::default()
-        .with_has_header(true)
-        .with_parse_options(CsvParseOptions::default().with_try_parse_dates(true))
-        .try_into_reader_with_file_path(Some(input.to_path_buf()))?
-        .finish()?;
+    let df_csv = util::polars::default_lazy_reder(input)?.finish()?;
 
     let (aggregate_df, summary_df) = create_data_frame(df_csv)?;
 
@@ -34,6 +30,7 @@ fn save_aggregated_instruments(
     let mut selected_col = aggregate_res.select([
         "instrument",
         "net_profit",
+        "pct_change",
         "total_commission",
         "tax_amount",
         "buy_quantity",
@@ -41,10 +38,7 @@ fn save_aggregated_instruments(
         "days_to_settle",
     ])?;
 
-    CsvWriter::new(output)
-        .include_header(true)
-        .with_separator(b',')
-        .finish(&mut selected_col)?;
+    util::polars::default_writer(output)?.finish(&mut selected_col)?;
 
     Ok(())
 }
@@ -67,7 +61,7 @@ fn save_metadata(output: &mut File, summary_df: LazyFrame) -> Result<(), Portfol
     writeln!(output, "{}", metadata)?;
     Ok(())
 }
-fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), PortfolioError> {
+fn create_data_frame(dataset: LazyFrame) -> Result<(LazyFrame, LazyFrame), PortfolioError> {
     let round = 2;
     let mode = RoundMode::HalfToEven;
 
@@ -147,18 +141,19 @@ fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), Portf
         // Zysk netto
         .with_columns([(
             // Jeśli istnieje jakakolwiek sprzedaż
-            when(col("sell_quantity").gt(lit(0_i128)))
-                .then(
-                    // Wtedy oblicz zysk/stratę
-                    col("net_proceeds") - col("cost_basis") - col("tax_amount"),
-                )
-                .otherwise(
-                    // W przeciwnym razie ustaw 0 (transakcja nierozliczona)
-                    lit(0_i128),
-                )
+            when(col("sell_quantity").gt(lit(0_u32)))
+                // Wtedy oblicz zysk/stratę
+                .then(col("net_proceeds") - col("cost_basis") - col("tax_amount"))
+                // W przeciwnym razie ustaw 0 (transakcja nierozliczona)
+                .otherwise(lit(0_f64))
                 .round(round, mode)
                 .alias("net_profit")
         )])
+        .with_column(
+            ((col("tax_base") / col("cost_basis")) * lit(100))
+                .round(round, mode)
+                .alias("pct_change"),
+        )
         .sort(["instrument"], Default::default());
 
     let summary = df.clone().lazy().select([
@@ -166,15 +161,15 @@ fn create_data_frame(dataset: DataFrame) -> Result<(LazyFrame, LazyFrame), Portf
         col("trade_period_end").max().alias("trade_period_end"),
         (col("total_commission"))
             .sum()
-            .round(2, RoundMode::HalfToEven)
+            .round(round, mode)
             .alias("commission_total"),
         col("tax_amount")
             .sum()
-            .round(2, RoundMode::HalfToEven)
+            .round(round, mode)
             .alias("total_tax_amount"),
         col("net_profit")
             .sum()
-            .round(2, RoundMode::HalfToEven)
+            .round(round, mode)
             .alias("total_net_profit"),
     ]);
 

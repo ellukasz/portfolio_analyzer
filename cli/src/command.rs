@@ -9,5 +9,12 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    MbankTradeReportCsv { trade_orders_file: String },
+    MbankTradeReportCsv {
+        trade_orders_file: String,
+    },
+    UpsideCSV {
+        investment_amount: f64,
+        upside_report: String,
+        market_data: String,
+    },
 }
