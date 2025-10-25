@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rust_decimal = { version = "1.38", features = ["serde-with-float","std"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0"
 polars = { version = "0.51", features = ["serde"] }

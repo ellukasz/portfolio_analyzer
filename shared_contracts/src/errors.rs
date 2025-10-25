@@ -15,9 +15,6 @@ pub enum PortfolioError {
     #[error("{0}")]
     Xls(String),
 
-    #[error("{0}")]
-    Decimal(#[from] rust_decimal::Error),
-
     #[error("Input error: {0}")]
     InputError(String),
     #[error("General error: {0}")]

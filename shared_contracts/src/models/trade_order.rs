@@ -1,11 +1,8 @@
-use crate::models::money::Money;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use strum_macros::Display;
-//todo move to money.rs
-pub const DEFAULT_MONEY_SCALE: u32 = 2;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct TradeOrder {
     /// Symbol or identifier of a financial instrument (e.g. "AAPL", "EURUSD", "PLN=F").
     pub instrument: String,
@@ -27,11 +24,11 @@ pub struct TradeOrder {
 
     /// Price of the order. Optional, as Market orders do not have a specified price.
     /// scale default to 2
-    pub price: Option<Money>,
+    pub price: Option<f64>,
 
     /// Commission charged for the order.
     ///  scale default to 2
-    pub commission: Money,
+    pub commission: f64,
 
     /// Current status of the order.
     pub status: OrderStatus,

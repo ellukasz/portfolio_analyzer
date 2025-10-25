@@ -4,10 +4,7 @@ use std::path::Path;
 use chrono::{DateTime, Utc};
 use polars::prelude::*;
 use shared_contracts::models::report::{Summary, TradePeriod};
-use shared_contracts::{
-    errors::PortfolioError,
-    models::{money::Money, trade_order::OrderSide},
-};
+use shared_contracts::{errors::PortfolioError, models::trade_order::OrderSide};
 use std::io::Write;
 
 pub fn calculate_and_save(input: &Path, output: &Path) -> Result<(), PortfolioError> {
@@ -54,9 +51,9 @@ fn save_metadata(output: &mut File, summary_df: LazyFrame) -> Result<(), Portfol
         Net Profit: {}\n\n",
         summary.trade_period.start,
         summary.trade_period.end,
-        summary.commission_total.as_string(),
-        summary.tax_amount_total.as_string(),
-        summary.net_profit_total.as_string()
+        summary.commission_total,
+        summary.tax_amount_total,
+        summary.net_profit_total
     );
     writeln!(output, "{}", metadata)?;
     Ok(())
@@ -64,7 +61,6 @@ fn save_metadata(output: &mut File, summary_df: LazyFrame) -> Result<(), Portfol
 fn create_data_frame(dataset: LazyFrame) -> Result<(LazyFrame, LazyFrame), PortfolioError> {
     let round = 2;
     let mode = RoundMode::HalfToEven;
-
     let df = dataset
         .clone()
         .lazy()
@@ -187,7 +183,7 @@ fn map_summary(summary_df: LazyFrame) -> Result<Summary, PortfolioError> {
     Ok(res)
 }
 
-fn _money(df: &DataFrame, column: &str) -> Result<Money, PortfolioError> {
+fn _money(df: &DataFrame, column: &str) -> Result<f64, PortfolioError> {
     let val = df
         .column(column)?
         .f64()?
@@ -195,7 +191,7 @@ fn _money(df: &DataFrame, column: &str) -> Result<Money, PortfolioError> {
         .ok_or(PortfolioError::InvalidValue(format!(
             "missing column {column} in summary"
         )))?;
-    Ok(Money::from_f64(val))
+    Ok(val)
 }
 
 fn _trade_period(df: &DataFrame) -> Result<TradePeriod, PortfolioError> {

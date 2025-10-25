@@ -1,8 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::models::money::Money;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProfitReport {
     #[serde(flatten)]
@@ -14,9 +12,9 @@ pub struct ProfitReport {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Summary {
     pub trade_period: TradePeriod,
-    pub commission_total: Money,
-    pub tax_amount_total: Money,
-    pub net_profit_total: Money,
+    pub commission_total: f64,
+    pub tax_amount_total: f64,
+    pub net_profit_total: f64,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Instrument {
@@ -24,16 +22,16 @@ pub struct Instrument {
     pub trade_period: TradePeriod,
     pub buy_quantity: i64,
     pub sell_quantity: i64,
-    pub buy_commission: Money,
-    pub sell_commission: Money,
-    pub total_commission: Money,
-    pub purchase_value: Money,
-    pub sale_value: Money,
-    pub cost_basis: Money,
-    pub net_proceeds: Money,
-    pub average_cost_basis: Money,
-    pub tax_amount: Money,
-    pub net_profit: Money,
+    pub buy_commission: f64,
+    pub sell_commission: f64,
+    pub total_commission: f64,
+    pub purchase_value: f64,
+    pub sale_value: f64,
+    pub cost_basis: f64,
+    pub net_proceeds: f64,
+    pub average_cost_basis: f64,
+    pub tax_amount: f64,
+    pub net_profit: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

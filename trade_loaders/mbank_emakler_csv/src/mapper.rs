@@ -1,13 +1,10 @@
 use super::model::Csv;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Europe::Warsaw;
-use rust_decimal::Decimal;
 use shared_contracts::errors::PortfolioError;
-use shared_contracts::models::money::Money;
 use shared_contracts::models::trade_order::{
     InstrumentType, OrderSide, OrderStatus, OrderType, TradeOrder,
 };
-use std::str::FromStr;
 
 pub(super) fn map(record: Csv) -> Result<TradeOrder, PortfolioError> {
     let order = TradeOrder {
@@ -82,35 +79,66 @@ fn _map_order_type(record: &Csv) -> Result<OrderType, PortfolioError> {
     }
 }
 
-fn _map_price(record: &Csv) -> Result<Option<Money>, PortfolioError> {
+fn _map_price(record: &Csv) -> Result<Option<f64>, PortfolioError> {
     if record.price_limit.is_empty() {
         return Ok(None);
     }
 
-    let price = Money::from_string(&record.price_limit);
-    Ok(Some(price))
-}
-
-fn _map_commission(record: &Csv) -> Result<Money, PortfolioError> {
-    let filled_quantity_raw = &record.filled_quantity;
-    let fulfilled_quantity: Decimal =
-        Decimal::from_str_exact(filled_quantity_raw).map_err(|e| {
+    let val = record
+        .price_limit
+        .clone()
+        .trim()
+        .replace(",", ".")
+        .parse::<f64>()
+        .map_err(|e| {
             PortfolioError::Error(format!(
-                "Invalid filled_quantity value {filled_quantity_raw:?}: {e}"
+                "Invalid price value {}, err: {}",
+                record.price_limit.clone(),
+                e
             ))
         })?;
-    let price_limit: Decimal = Money::from_string(&record.price_limit).as_decimal();
+    Ok(Some(val))
+}
 
-    let mbank_percentage: Decimal = Decimal::from_str("0.039")?;
+fn _map_commission(record: &Csv) -> Result<f64, PortfolioError> {
+    let fulfilled_quantity = record
+        .filled_quantity
+        .clone()
+        .trim()
+        .replace(",", ".")
+        .parse::<f64>()
+        .map_err(|e| {
+            PortfolioError::Error(format!(
+                "Invalid filled_quantity value {}, err: {}",
+                record.filled_quantity.clone(),
+                e
+            ))
+        })?;
 
-    let mbank_thrashold = Decimal::from_str("5.00")?;
+    let price_limit = record
+        .price_limit
+        .clone()
+        .trim()
+        .replace(",", ".")
+        .parse::<f64>()
+        .map_err(|e| {
+            PortfolioError::Error(format!(
+                "Invalid price_limit value {}, err: {}",
+                record.price_limit.clone(),
+                e
+            ))
+        })?;
+
+    let mbank_percentage = 0.039_f64;
+
+    let mbank_thrashold = 5.00_f64;
 
     let commission = (price_limit * fulfilled_quantity) * mbank_percentage;
 
     if commission < mbank_thrashold {
-        Ok(Money::from_decimal(mbank_thrashold))
+        Ok(mbank_thrashold)
     } else {
-        Ok(Money::from_decimal(commission))
+        Ok(commission)
     }
 }
 
